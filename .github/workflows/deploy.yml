@@ -1,0 +1,63 @@
+# GitHub Pages'e otomatik derleme ve yayınlama
+# Gerekli ayar: Repo > Settings > Pages > Build and deployment > Source = "GitHub Actions"
+# Supabase anahtarları: Repo > Settings > Secrets and variables > Actions altında
+#   VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY tanımlayın.
+#   Tanımlanmazsa site Demo Modu'nda yayınlanır (çökmez).
+name: GitHub Pages'e Yayınla
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodu al
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Bağımlılıkları yükle
+        run: npm ci
+
+      - name: Derle
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH }}
+
+      - name: Pages yapılandır
+        uses: actions/configure-pages@v5
+
+      - name: Derleme çıktısını yükle
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages'e yayınla
+        id: deployment
+        uses: actions/deploy-pages@v4

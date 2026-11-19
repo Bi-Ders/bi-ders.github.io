@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Bi Ders! — Yönlendiriliyor…</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // MIT License — https://github.com/rafgraph/spa-github-pages
+      // Bu betik mevcut URL'yi sorgu dizgisine dönüştürüp index.html'e yönlendirir.
+      // index.html içindeki karşılık gelen betik ise URL'yi geri yükler.
+      //
+      // pathSegmentsToKeep:
+      //   0 -> kullanici.github.io veya özel alan adı (bi-ders.github.io için doğru değer)
+      //   1 -> kullanici.github.io/repo-adi şeklindeki proje sayfaları
+      var pathSegmentsToKeep = 0
+
+      var l = window.location
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname
+            .split('/')
+            .slice(0, 1 + pathSegmentsToKeep)
+            .join('/') +
+          '/?/' +
+          l.pathname
+            .slice(1)
+            .split('/')
+            .slice(pathSegmentsToKeep)
+            .join('/')
+            .replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+      )
+    </script>
+  </head>
+  <body></body>
+</html>

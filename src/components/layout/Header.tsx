@@ -1,0 +1,240 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, Search, User, X } from 'lucide-react'
+import { siteConfig } from '../../config/site'
+import { useAuth } from '../../context/AuthContext'
+import { useDismiss, useLockBody } from '../../hooks'
+import { cn, roleLabels } from '../../lib/utils'
+import { Avatar, Logo } from '../ui/Display'
+import { Button } from '../ui/Button'
+import { SearchBar } from './SearchBar'
+
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'relative rounded-lg px-3 py-2 text-[15px] font-semibold transition-colors',
+    isActive ? 'text-ink after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-sun' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+  )
+
+export function Header() {
+  const { user, loading } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
+
+  // Sayfa değişince mobil menüyü kapat
+  useEffect(() => setMobileOpen(false), [location.pathname, location.search])
+  useLockBody(mobileOpen)
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur-md supports-[backdrop-filter]:bg-paper/80">
+      <div className="container-page flex h-16 items-center gap-3 lg:gap-6">
+        <Logo className="shrink-0" />
+
+        <nav aria-label="Ana menü" className="hidden items-center gap-0.5 xl:flex">
+          {siteConfig.mainNav.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLinkClass}>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <SearchBar id="header-search" className="ml-auto hidden w-full max-w-xs md:block lg:max-w-sm" />
+
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          {loading ? (
+            <div className="skeleton h-10 w-24 rounded-xl" aria-hidden />
+          ) : user ? (
+            <UserMenu />
+          ) : (
+            <LoginButton />
+          )}
+
+          <button
+            type="button"
+            className="grid size-10 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink xl:hidden"
+            aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMobileOpen((o) => !o)}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
+      </div>
+
+      {mobileOpen && <MobileMenu onClose={() => setMobileOpen(false)} />}
+    </header>
+  )
+}
+
+function LoginButton() {
+  const { openAuth } = useAuth()
+  return (
+    <Button id="header-login" size="sm" onClick={() => openAuth('login')} icon={<LogIn className="size-4" aria-hidden />} className="h-10">
+      <span>Giriş Yap</span>
+    </Button>
+  )
+}
+
+function UserMenu() {
+  const { profile, isStaff, signOut } = useAuth()
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const ref = useDismiss<HTMLDivElement>(open, close)
+  const location = useLocation()
+  useEffect(close, [location.pathname, close])
+
+  const name = profile?.full_name ?? 'Hesabım'
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        id="user-menu-button"
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-10 items-center gap-2 rounded-xl border border-line-strong bg-white pr-2.5 pl-1 transition hover:border-ink"
+      >
+        <Avatar name={name} src={profile?.avatar_url} size="sm" className="ring-0" />
+        <span className="hidden max-w-[120px] truncate text-sm font-semibold sm:block">{name.split(' ')[0]}</span>
+        <ChevronDown className={cn('size-4 text-muted transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+
+      {open && (
+        <div role="menu" aria-labelledby="user-menu-button" className="card absolute right-0 mt-2 w-64 origin-top-right animate-pop-in overflow-hidden p-1.5">
+          <div className="border-b border-line px-3 pt-2 pb-3">
+            <p className="truncate font-semibold">{name}</p>
+            <p className="truncate text-xs text-muted">
+              {profile?.email ? `${profile.email} · ` : ''}
+              {profile ? roleLabels[profile.role] : ''}
+            </p>
+          </div>
+          <div className="py-1">
+            <MenuLink to="/profil" icon={<User className="size-4" />}>
+              Profilim
+            </MenuLink>
+            {isStaff && (
+              <MenuLink to="/admin" icon={<LayoutDashboard className="size-4" />}>
+                Yönetim Paneli
+              </MenuLink>
+            )}
+          </div>
+          <div className="border-t border-line pt-1">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close()
+                void signOut()
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger-soft"
+            >
+              <LogOut className="size-4" aria-hidden /> Çıkış Yap
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MenuLink({ to, icon, children }: { to: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Link role="menuitem" to={to} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-paper hover:text-ink">
+      <span className="text-muted" aria-hidden>
+        {icon}
+      </span>
+      {children}
+    </Link>
+  )
+}
+
+function MobileMenu({ onClose }: { onClose: () => void }) {
+  const { user, isStaff, openAuth, signOut } = useAuth()
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <>
+      <div className="fixed inset-0 top-16 z-30 animate-fade-in bg-ink/30 xl:hidden" onClick={onClose} aria-hidden />
+      <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] animate-pop-in overflow-y-auto border-b border-line bg-paper shadow-[var(--shadow-pop)] xl:hidden">
+        <div className="container-page py-5">
+          <SearchBar id="mobile-search" className="md:hidden" onSubmitted={onClose} />
+
+          <nav aria-label="Mobil menü" className="mt-4 grid gap-1 sm:grid-cols-2 md:mt-0">
+            {siteConfig.mainNav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn('flex flex-col rounded-xl px-4 py-3 transition', isActive ? 'bg-ink text-paper' : 'hover:bg-white')
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className="text-base font-semibold">{item.label}</span>
+                    {item.description && <span className={cn('text-sm', isActive ? 'text-paper/75' : 'text-muted')}>{item.description}</span>}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="mt-5 border-t border-line pt-5">
+            {user ? (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Link to="/profil" className="flex items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-3 font-semibold">
+                  <User className="size-4" aria-hidden /> Profilim
+                </Link>
+                {isStaff && (
+                  <Link to="/admin" className="flex items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-3 font-semibold">
+                    <LayoutDashboard className="size-4" aria-hidden /> Yönetim Paneli
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    void signOut()
+                  }}
+                  className="flex items-center gap-2 rounded-xl border border-danger/30 bg-white px-4 py-3 font-semibold text-danger"
+                >
+                  <LogOut className="size-4" aria-hidden /> Çıkış Yap
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  onClick={() => {
+                    onClose()
+                    openAuth('login')
+                  }}
+                  icon={<LogIn className="size-4" aria-hidden />}
+                >
+                  Giriş Yap
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    onClose()
+                    openAuth('register')
+                  }}
+                >
+                  Ücretsiz Kayıt Ol
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <p className="mt-5 flex items-center gap-2 text-xs text-muted md:hidden">
+            <Search className="size-3.5" aria-hidden /> İpucu: Arama sonuçları dersler, testler, forum ve kitapları kapsar.
+          </p>
+        </div>
+      </div>
+    </>
+  )
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#FAF7F0" />
+    <title>Bi Ders! — Ücretsiz Ders Notları, Testler ve Öğrenci Forumu</title>
+    <meta
+      name="description"
+      content="Bi Ders! ile ders notlarına, konu anlatımlarına, testlere, kitaplara ve öğrenci forumuna tek yerden ulaşın. Ücretsiz, Türkçe ve mobil uyumlu eğitim portalı."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bi Ders! — Türkçe Eğitim Portalı" />
+    <meta
+      property="og:description"
+      content="Ders notları, testler, kitaplar ve öğrenci forumu tek yerde."
+    />
+    <meta property="og:locale" content="tr_TR" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Start Single Page Apps for GitHub Pages -->
+    <!--
+      GitHub Pages, /forum gibi alt sayfalar yenilendiğinde 404.html sunar.
+      public/404.html yolu sorgu dizgisine (?/forum) çevirip buraya yönlendirir;
+      bu betik ise React Router devreye girmeden önce doğru URL'yi geri yükler.
+      MIT Lisansı — https://github.com/rafgraph/spa-github-pages
+      Cloudflare Pages'te public/_redirects kullanıldığı için bu betik hiçbir şey yapmaz.
+    -->
+    <script type="text/javascript">
+      (function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&')
+            })
+            .join('?')
+          window.history.replaceState(
+            null,
+            null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+          )
+        }
+      })(window.location)
+    </script>
+    <!-- End Single Page Apps for GitHub Pages -->
+  </head>
+  <body>
+    <noscript>Bi Ders! uygulamasını kullanmak için JavaScript'i etkinleştirin.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
