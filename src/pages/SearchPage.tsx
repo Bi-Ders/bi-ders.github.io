@@ -90,7 +90,7 @@ export function SearchPage() {
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {res.data!.quizzes.map((qz) => (
-                    <Link key={qz.id} to="/testler" className="card card-hover p-5">
+                    <Link key={qz.id} to={`/testler/${qz.id}`} className="card card-hover p-5">
                       <Badge tone="brand">{difficultyLabels[qz.difficulty]}</Badge>
                       <h3 className="mt-2 font-sans text-base font-bold">{qz.title}</h3>
                       {qz.description && <p className="mt-1 text-sm text-muted">{qz.description}</p>}

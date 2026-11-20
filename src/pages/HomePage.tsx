@@ -7,6 +7,7 @@ import { useAsync, usePageMeta } from '../hooks'
 import { getBooks, getCategories, getContents, getForumTopics, getQuizzes } from '../services/api'
 import { contentTypeLabels, difficultyLabels, formatNumber, timeAgo } from '../lib/utils'
 import { SearchBar } from '../components/layout/SearchBar'
+import { ModuleIcon } from '../components/modules/ModuleIcon'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { Avatar, Badge, CategoryTag } from '../components/ui/Display'
 import { EmptyState, ErrorState, GridSkeleton, RowSkeleton, Skeleton } from '../components/ui/Feedback'
@@ -76,6 +77,45 @@ export function HomePage() {
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 8 Ana Eğitim Modülü */}
+      <section aria-labelledby="sec-modules" className="container-page pt-14">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">8 Eğitim Modülü</p>
+            <h2 id="sec-modules" className="mt-1 text-2xl font-extrabold sm:text-3xl">
+              İhtiyacın olan tüm kaynaklar tek çatı altında
+            </h2>
+          </div>
+          <p className="text-sm text-muted">Ders notlarından interaktif oyunlara, online testlerden öğretmen evraklarına.</p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {siteConfig.educationModules.map((mod) => (
+            <Link
+              key={mod.key}
+              to={mod.to}
+              className="group card card-hover flex flex-col overflow-hidden"
+            >
+              <div className={`flex h-24 items-start justify-between bg-gradient-to-br ${mod.gradient} p-4 text-white`}>
+                <span className="grid size-10 place-items-center rounded-xl bg-white/20 backdrop-blur-xs transition-transform duration-200 group-hover:scale-105">
+                  <ModuleIcon name={mod.icon} className="size-5" />
+                </span>
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold backdrop-blur-xs">
+                  {mod.badge}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <h3 className="flex items-center justify-between gap-2 font-display text-lg font-extrabold text-ink group-hover:text-brand">
+                  <span>{mod.label}</span>
+                  <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand" aria-hidden />
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{mod.description}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -244,7 +284,7 @@ export function HomePage() {
               <ErrorState message={quizzes.error} onRetry={quizzes.reload} />
             ) : (
               (quizzes.data ?? []).map((q) => (
-                <Link key={q.id} to="/testler" className="card card-hover block p-4">
+                <Link key={q.id} to={`/testler/${q.id}`} className="card card-hover block p-4">
                   <div className="flex items-center justify-between gap-2">
                     {q.category ? <CategoryTag name={q.category.name} color={q.category.color} /> : <span />}
                     <Badge tone={q.difficulty === 'hard' ? 'danger' : q.difficulty === 'easy' ? 'success' : 'brand'}>

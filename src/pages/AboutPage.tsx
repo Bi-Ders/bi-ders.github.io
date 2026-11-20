@@ -1,14 +1,15 @@
-import { BookOpen, HeartHandshake, ShieldCheck, Users } from 'lucide-react'
+import { BookOpen, Code2, ExternalLink, GitBranch, HeartHandshake, ShieldCheck, Users } from 'lucide-react'
 import { siteConfig } from '../config/site'
 import { usePageMeta } from '../hooks'
 import { PageHeader } from '../components/ui/Display'
-import { ButtonLink } from '../components/ui/Button'
+import { ButtonLink, buttonClass } from '../components/ui/Button'
+import { SocialIcon } from '../components/ui/BrandIcons'
 
 const values = [
   {
     icon: <BookOpen className="size-5" />,
     title: 'Herkese açık ve ücretsiz',
-    text: 'Nitelikli ders notlarına, testlere ve kaynak kitaplara ulaşmak için ücret duvarları olmamalı. Tüm temel içerikler sonsuza kadar ücretsizdir.',
+    text: 'Nitelikli ders notlarına, sunulara, testlere ve kaynak kitaplara ulaşmak için ücret duvarları olmamalı. Tüm temel içerikler sonsuza kadar ücretsizdir.',
   },
   {
     icon: <Users className="size-5" />,
@@ -23,7 +24,7 @@ const values = [
   {
     icon: <HeartHandshake className="size-5" />,
     title: 'Gönüllü katkı',
-    text: 'Öğretmenler konu anlatımı, test ve kitap önerileri ekleyebilir; içerikler topluluk geri bildirimleriyle sürekli güncellenir.',
+    text: 'Öğretmenler konu anlatımı, yazılı, sunu, test ve etkinlik ekleyebilir; içerikler topluluk geri bildirimleriyle sürekli güncellenir.',
   },
 ]
 
@@ -55,10 +56,47 @@ export function AboutPage() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-6 rounded-3xl border border-ink bg-ink p-8 text-paper sm:flex-row sm:items-center">
+        {/* Açık Kaynak ve GitHub Bilgilendirme Alanı */}
+        <div className="mt-10 overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-card)]">
+          <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-12 lg:items-center">
+            <div className="lg:col-span-8">
+              <div className="inline-flex items-center gap-2 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-dark">
+                <Code2 className="size-3.5" aria-hidden /> Açık Kaynak Proje
+              </div>
+              <h2 className="mt-3 font-display text-2xl font-extrabold text-ink sm:text-3xl">
+                Tamamen şeffaf ve topluluk tarafından geliştiriliyor
+              </h2>
+              <p className="mt-2.5 text-[15px] leading-relaxed text-muted">
+                {siteConfig.name} kaynak kodları GitHub üzerinde herkese açık olarak barındırılır. Hata bildirimi yapabilir, yeni özellik önerebilir veya pull request göndererek projeye doğrudan katkıda bulunabilirsin.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-ink-soft">
+                <span className="inline-flex items-center gap-1.5">
+                  <GitBranch className="size-4 text-brand" aria-hidden /> Bi-Ders/bi-ders.github.io
+                </span>
+                <span>· MIT Lisansı · Reklamsız ve Kâr Amacı Gütmeyen</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 lg:col-span-4 lg:items-end">
+              <a
+                href={siteConfig.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass('primary', 'lg', 'w-full lg:w-auto')}
+              >
+                <SocialIcon platform="github" className="size-5" />
+                <span>GitHub&apos;da İncele</span>
+                <ExternalLink className="size-4" aria-hidden />
+              </a>
+              <p className="text-xs text-muted">{siteConfig.githubUrl}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 flex flex-col items-start justify-between gap-6 rounded-3xl border border-ink bg-ink p-8 text-paper sm:flex-row sm:items-center">
           <div className="max-w-xl">
             <h2 className="font-display text-2xl font-extrabold text-paper">Öğretmen misin veya katkı sağlamak mı istiyorsun?</h2>
-            <p className="mt-2 text-paper/80">Ders notu, soru veya kitap önerisi paylaşmak için bize ulaşabilirsin.</p>
+            <p className="mt-2 text-paper/80">Ders notu, sunu, yazılı, test veya etkinlik önerisi paylaşmak için bize ulaşabilirsin.</p>
           </div>
           <ButtonLink to="/iletisim" variant="sun" size="lg">
             İletişime Geç

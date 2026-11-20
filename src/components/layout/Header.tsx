@@ -5,14 +5,25 @@ import { siteConfig } from '../../config/site'
 import { useAuth } from '../../context/AuthContext'
 import { useDismiss, useLockBody } from '../../hooks'
 import { cn, roleLabels } from '../../lib/utils'
+import { ModuleIcon } from '../modules/ModuleIcon'
 import { Avatar, Logo } from '../ui/Display'
 import { Button } from '../ui/Button'
 import { SearchBar } from './SearchBar'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'relative rounded-lg px-3 py-2 text-[15px] font-semibold transition-colors',
-    isActive ? 'text-ink after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-sun' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+    'relative rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors',
+    isActive
+      ? 'text-ink after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-sun'
+      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+  )
+
+const moduleLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-bold whitespace-nowrap transition',
+    isActive
+      ? 'bg-ink text-paper shadow-xs'
+      : 'text-ink-soft hover:bg-white hover:text-ink',
   )
 
 export function Header() {
@@ -25,11 +36,12 @@ export function Header() {
   useLockBody(mobileOpen)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur-md supports-[backdrop-filter]:bg-paper/80">
-      <div className="container-page flex h-16 items-center gap-3 lg:gap-6">
+    <header className="sticky top-0 z-40 border-b border-line bg-paper/92 backdrop-blur-md supports-[backdrop-filter]:bg-paper/82">
+      {/* Üst Satır: Logo, Genel Menü, Arama, Hesap */}
+      <div className="container-page flex h-16 items-center gap-3 lg:gap-5">
         <Logo className="shrink-0" />
 
-        <nav aria-label="Ana menü" className="hidden items-center gap-0.5 xl:flex">
+        <nav aria-label="Genel menü" className="hidden items-center gap-0.5 lg:flex">
           {siteConfig.mainNav.map((item) => (
             <NavLink key={item.to} to={item.to} className={navLinkClass}>
               {item.label}
@@ -50,7 +62,7 @@ export function Header() {
 
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink xl:hidden"
+            className="grid size-10 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink lg:hidden"
             aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
             aria-expanded={mobileOpen}
             aria-controls="mobile-menu"
@@ -59,6 +71,21 @@ export function Header() {
             {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
+      </div>
+
+      {/* Alt Satır: 8 Ana Eğitim Modülü Hızlı Erişim Menüsü */}
+      <div className="border-t border-line/70 bg-paper-deep/65">
+        <nav
+          aria-label="Eğitim modülleri"
+          className="container-page flex items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {siteConfig.educationModules.map((mod) => (
+            <NavLink key={mod.key} to={mod.to} className={moduleLinkClass}>
+              <ModuleIcon name={mod.icon} className="size-3.5" />
+              <span>{mod.label}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
 
       {mobileOpen && <MobileMenu onClose={() => setMobileOpen(false)} />}
@@ -160,24 +187,44 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 top-16 z-30 animate-fade-in bg-ink/30 xl:hidden" onClick={onClose} aria-hidden />
-      <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] animate-pop-in overflow-y-auto border-b border-line bg-paper shadow-[var(--shadow-pop)] xl:hidden">
+      <div className="fixed inset-0 top-[108px] z-30 animate-fade-in bg-ink/30 lg:hidden" onClick={onClose} aria-hidden />
+      <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-7rem)] animate-pop-in overflow-y-auto border-b border-line bg-paper shadow-[var(--shadow-pop)] lg:hidden">
         <div className="container-page py-5">
           <SearchBar id="mobile-search" className="md:hidden" onSubmitted={onClose} />
 
-          <nav aria-label="Mobil menü" className="mt-4 grid gap-1 sm:grid-cols-2 md:mt-0">
+          <p className="eyebrow mt-4 md:mt-0">8 Eğitim Modülü</p>
+          <nav aria-label="Mobil eğitim modülleri" className="mt-2.5 grid grid-cols-2 gap-2">
+            {siteConfig.educationModules.map((mod) => (
+              <NavLink
+                key={mod.key}
+                to={mod.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-bold transition',
+                    isActive ? 'border-ink bg-ink text-paper' : 'border-line bg-white text-ink hover:border-ink',
+                  )
+                }
+              >
+                <ModuleIcon name={mod.icon} className="size-4 shrink-0" />
+                <span className="truncate">{mod.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <p className="eyebrow mt-5">Genel Sayfalar</p>
+          <nav aria-label="Mobil menü" className="mt-2 grid gap-1 sm:grid-cols-2">
             {siteConfig.mainNav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  cn('flex flex-col rounded-xl px-4 py-3 transition', isActive ? 'bg-ink text-paper' : 'hover:bg-white')
+                  cn('flex flex-col rounded-xl px-4 py-2.5 transition', isActive ? 'bg-ink text-paper' : 'hover:bg-white')
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <span className="text-base font-semibold">{item.label}</span>
-                    {item.description && <span className={cn('text-sm', isActive ? 'text-paper/75' : 'text-muted')}>{item.description}</span>}
+                    <span className="text-sm font-semibold">{item.label}</span>
+                    {item.description && <span className={cn('text-xs', isActive ? 'text-paper/75' : 'text-muted')}>{item.description}</span>}
                   </>
                 )}
               </NavLink>

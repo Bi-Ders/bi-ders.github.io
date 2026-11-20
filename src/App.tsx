@@ -7,8 +7,11 @@ import { HomePage } from './pages/HomePage'
 import { LessonsPage } from './pages/LessonsPage'
 import { LessonDetailPage } from './pages/LessonDetailPage'
 import { QuizzesPage } from './pages/QuizzesPage'
+import { QuizRunnerPage } from './pages/QuizRunnerPage'
 import { ForumPage } from './pages/ForumPage'
 import { ForumDetailPage } from './pages/ForumDetailPage'
+import { ResourceModulePage } from './pages/ResourceModulePage'
+import { ActivitiesPage } from './pages/ActivitiesPage'
 import { BooksPage } from './pages/BooksPage'
 import { SearchPage } from './pages/SearchPage'
 import { AboutPage } from './pages/AboutPage'
@@ -60,11 +63,22 @@ export function App() {
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<HomePage />} />
-              <Route path="dersler" element={<LessonsPage />} />
-              <Route path="dersler/:slug" element={<LessonDetailPage />} />
-              <Route path="testler" element={<QuizzesPage />} />
+
+              {/* 8 Ana Eğitim Modülü */}
               <Route path="forum" element={<ForumPage />} />
               <Route path="forum/:id" element={<ForumDetailPage />} />
+              <Route path="sunular" element={<ResourceModulePage key="sunular" module="sunular" />} />
+              <Route path="ders-notlari" element={<ResourceModulePage key="ders-notlari" module="ders-notlari" />} />
+              <Route path="etkinlikler" element={<ActivitiesPage />} />
+              <Route path="testler" element={<QuizzesPage />} />
+              <Route path="testler/:id" element={<QuizRunnerPage />} />
+              <Route path="yazililar" element={<ResourceModulePage key="yazililar" module="yazililar" />} />
+              <Route path="sinavlar" element={<ResourceModulePage key="sinavlar" module="sinavlar" />} />
+              <Route path="evraklar" element={<ResourceModulePage key="evraklar" module="evraklar" />} />
+
+              {/* Genel içerik sayfaları */}
+              <Route path="dersler" element={<LessonsPage />} />
+              <Route path="dersler/:slug" element={<LessonDetailPage />} />
               <Route path="kitaplar" element={<BooksPage />} />
               <Route path="ara" element={<SearchPage />} />
               <Route path="hakkimizda" element={<AboutPage />} />

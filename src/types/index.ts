@@ -63,6 +63,7 @@ export type ForumTopic = {
   is_solved: boolean
   reply_count: number
   view_count: number
+  like_count?: number
   last_activity_at: string
   created_at: string
   author?: AuthorSummary | null
@@ -75,6 +76,7 @@ export type ForumReply = {
   author_id: string
   body: string
   is_accepted: boolean
+  like_count?: number
   created_at: string
   author?: AuthorSummary | null
 }
@@ -98,6 +100,35 @@ export type Quiz = {
   category?: Category | null
 }
 
+export type QuizQuestion = {
+  id: string
+  quiz_id: string
+  question: string
+  image_url: string | null
+  options: string[]
+  sort_order: number
+  /** Demo modunda anlık geri bildirim için sunulur; Supabase'te RLS gereği yalnızca submit_quiz() ile dönebilir. */
+  correct_option?: number
+  explanation?: string | null
+}
+
+export type QuizSubmissionDetail = {
+  question_id: string
+  selected: number | null
+  correct_option: number
+  is_correct: boolean
+  explanation: string | null
+}
+
+export type QuizSubmissionResult = {
+  result_id: string
+  score: number
+  total: number
+  duration_seconds: number
+  details: QuizSubmissionDetail[]
+  saved: boolean
+}
+
 export type QuizResult = {
   id: string
   quiz_id: string
@@ -107,6 +138,72 @@ export type QuizResult = {
   duration_seconds: number | null
   created_at: string
   quiz?: Pick<Quiz, 'id' | 'title' | 'slug'> | null
+}
+
+export type ModuleKey =
+  | 'forum'
+  | 'sunular'
+  | 'ders-notlari'
+  | 'etkinlikler'
+  | 'testler'
+  | 'yazililar'
+  | 'sinavlar'
+  | 'evraklar'
+
+export type ResourceModuleKey = 'sunular' | 'ders-notlari' | 'yazililar' | 'sinavlar' | 'evraklar'
+
+export type DocumentFormat = 'PDF' | 'PPTX' | 'DOCX'
+
+export type ResourcePreviewSection = {
+  heading: string
+  content: string
+  items?: string[]
+}
+
+export type ModuleResource = {
+  id: string
+  module: ResourceModuleKey
+  title: string
+  summary: string
+  grade: string
+  category_id: string | null
+  category?: Category | null
+  unit: string
+  format: DocumentFormat
+  file_size: string
+  page_count: number
+  download_count: number
+  gradient: string
+  file_url: string | null
+  preview_sections: ResourcePreviewSection[]
+  tags: string[]
+  author?: AuthorSummary | null
+  published_at: string
+}
+
+export type ActivityKind = 'game' | 'activity'
+export type ActivityProvider = 'wordwall' | 'h5p' | 'html5'
+export type Html5ActivityType = 'matching' | 'flashcards' | 'timeline' | 'memory' | 'sorting'
+
+export type InteractiveActivity = {
+  id: string
+  title: string
+  description: string
+  kind: ActivityKind
+  provider: ActivityProvider
+  grade: string
+  category_id: string | null
+  category?: Category | null
+  unit: string
+  duration_minutes: number
+  play_count: number
+  gradient: string
+  embed_url: string | null
+  html5_type?: Html5ActivityType
+  html5_payload?: Record<string, unknown>
+  tags: string[]
+  author?: AuthorSummary | null
+  created_at: string
 }
 
 export type Book = {

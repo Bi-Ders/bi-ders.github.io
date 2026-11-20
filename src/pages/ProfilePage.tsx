@@ -213,18 +213,22 @@ export function ProfilePage() {
               results.data.map((r) => {
                 const pct = r.total > 0 ? Math.round((r.score / r.total) * 100) : 0
                 return (
-                  <div key={r.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <Link
+                    key={r.id}
+                    to={`/testler/${r.quiz_id}`}
+                    className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-paper/70"
+                  >
                     <div>
                       <p className="font-semibold text-ink">{r.quiz?.title ?? 'Test'}</p>
                       <p className="text-xs text-muted">
                         {formatDate(r.created_at)}
-                        {r.duration_seconds ? ` · ${Math.round(r.duration_seconds / 60)} dk` : ''}
+                        {r.duration_seconds ? ` · ${Math.max(1, Math.round(r.duration_seconds / 60))} dk` : ''}
                       </p>
                     </div>
                     <Badge tone={pct >= 75 ? 'success' : pct >= 50 ? 'brand' : 'danger'}>
                       {r.score}/{r.total} (%{pct})
                     </Badge>
-                  </div>
+                  </Link>
                 )
               })
             )}

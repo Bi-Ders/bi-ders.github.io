@@ -1,18 +1,19 @@
 import { Link } from 'react-router-dom'
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
 import { siteConfig } from '../../config/site'
 import { Logo } from '../ui/Display'
 import { SocialIcon } from '../ui/BrandIcons'
 
 export function Footer() {
   const year = new Date().getFullYear()
-  const sections = siteConfig.mainNav.slice(0, 4)
+  const moduleLinks = siteConfig.educationModules.map((m) => ({ label: m.label, to: m.to }))
   const quick = [
     { label: 'Ana Sayfa', to: '/' },
+    { label: 'Dersler', to: '/dersler' },
+    { label: 'Kitaplar', to: '/kitaplar' },
     { label: 'Arama', to: '/ara' },
     { label: 'Hakkımızda', to: '/hakkimizda' },
     { label: 'İletişim', to: '/iletisim' },
-    { label: 'Giriş Yap', to: '/giris' },
   ]
 
   return (
@@ -31,6 +32,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
+                  title={s.label}
                   className="grid size-10 place-items-center rounded-xl border border-paper/20 text-paper/90 transition hover:border-sun hover:bg-sun hover:text-ink"
                 >
                   <SocialIcon platform={s.platform} />
@@ -40,10 +42,10 @@ export function Footer() {
           </ul>
         </div>
 
-        <FooterColumn title="Bölümler" className="lg:col-span-2" links={sections} />
+        <FooterColumn title="Eğitim Modülleri" className="lg:col-span-3" links={moduleLinks} twoCols />
         <FooterColumn title="Hızlı Linkler" className="lg:col-span-2" links={quick} />
 
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-3">
           <h2 className="font-display text-sm font-bold tracking-[0.12em] text-sun uppercase">İletişim</h2>
           <ul className="mt-4 space-y-3 text-[15px] text-paper/85">
             <li>
@@ -61,8 +63,18 @@ export function Footer() {
             </li>
           </ul>
           <div className="mt-6 rounded-2xl border border-paper/15 bg-paper/5 p-4 text-sm text-paper/80">
-            <strong className="text-paper">Proje hakkında:</strong> {siteConfig.name} gönüllü öğretmenler ve öğrenciler tarafından geliştirilen, reklamsız
-            ve kâr amacı gütmeyen açık bir eğitim projesidir.
+            <strong className="text-paper">Açık kaynak eğitim:</strong> {siteConfig.name} gönüllü öğretmenler ve öğrenciler tarafından geliştirilen, reklamsız
+            ve açık kaynak bir eğitim projesidir.
+            <a
+              href={siteConfig.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 font-semibold text-sun hover:underline"
+            >
+              <SocialIcon platform="github" className="size-3.5" />
+              GitHub Deposunu İncele
+              <ExternalLink className="size-3.5" aria-hidden />
+            </a>
           </div>
         </div>
       </div>
@@ -89,11 +101,21 @@ export function Footer() {
   )
 }
 
-function FooterColumn({ title, links, className }: { title: string; links: ReadonlyArray<{ label: string; to: string }>; className?: string }) {
+function FooterColumn({
+  title,
+  links,
+  className,
+  twoCols,
+}: {
+  title: string
+  links: ReadonlyArray<{ label: string; to: string }>
+  className?: string
+  twoCols?: boolean
+}) {
   return (
     <div className={className}>
       <h2 className="font-display text-sm font-bold tracking-[0.12em] text-sun uppercase">{title}</h2>
-      <ul className="mt-4 space-y-2.5 text-[15px]">
+      <ul className={`mt-4 gap-x-4 gap-y-2.5 text-[15px] ${twoCols ? 'grid grid-cols-2 sm:grid-cols-1 lg:grid-cols-2' : 'space-y-2.5'}`}>
         {links.map((l) => (
           <li key={l.to}>
             <Link to={l.to} className="text-paper/85 transition hover:text-sun">
