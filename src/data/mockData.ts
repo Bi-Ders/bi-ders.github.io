@@ -696,63 +696,6 @@ export const mockBooks: Book[] = [
     category: cat('fizik'),
   },
   {
-    id: 'bk-4',
-    slug: 'nutuk-gencler-icin-aciklamali-baski',
-    added_by: demoProfiles.admin.id,
-    category_id: cat('tarih').id,
-    title: 'Nutuk',
-    author: 'Mustafa Kemal Atatürk',
-    author_title: 'Türkiye Cumhuriyeti Kurucusu · Açıklamalı Tarih Baskısı',
-    author_bio:
-      'Kurtuluş Savaşı ve Cumhuriyet’in kuruluş sürecini 1919’dan 1927’ye birinci elden belgelerle aktaran tarihî başyapıt. Öğrenciler için haritalar ve sadeleştirilmiş dipnotlarla hazırlanmıştır.',
-    publisher: 'Bi Ders! Klasikler',
-    isbn: '978-605-9124-04-5',
-    description:
-      'Kurtuluş Savaşı’nı ve Türkiye Cumhuriyeti’nin kuruluşunu birinci ağızdan anlatan temel eser. Gençler için paralel günümüz Türkçesi dipnotları, cephe haritaları ve antlaşma özet tabloları içerir.',
-    grade: 'Genel / YKS',
-    price: 159,
-    cover_url: '/books/nutuk.webp',
-    file_url: '/books/samples/nutuk-ornek.pdf',
-    external_url: 'https://iyzi.link/biders-nutuk-ozel-baski',
-    payment_provider: 'iyzico',
-    page_count: 600,
-    published_year: 2026,
-    highlights: [
-      '600 sayfalık tam metin ve paralel günümüz Türkçesi kelime dipnotları',
-      '32 sayfalık Kurtuluş Savaşı cephe haritaları ve kronoloji şemaları',
-      'TYT-AYT İnkılap Tarihi konularıyla doğrudan eşleştirilmiş kavram dizini',
-    ],
-    sample_pages: [
-      {
-        pageNumber: 9,
-        heading: '19 Mayıs 1919 — Samsun’a Çıkış',
-        content: '1919 yılı Mayısının 19’uncu günü Samsun’a çıktım. Genel vaziyet ve manzara…',
-        highlights: [
-          '19 Mayıs 1919: Millî Mücadele’nin fiilî başlangıcı',
-          '22 Haziran 1919: Amasya Genelgesi ile amaç, gerekçe ve yöntemin ilanı',
-        ],
-        tip: 'Nutuk, 1919–1927 yılları arasını kapsar; 1927 sonrası inkılaplar eser kapsamı dışındadır.',
-      },
-      {
-        pageNumber: 214,
-        heading: 'TBMM’nin Açılışı ve Millî Egemenlik',
-        content: '23 Nisan 1920’de Türkiye Büyük Millet Meclisi’nin açılmasıyla millî egemenlik ilkesinin kurumsallaşması.',
-        highlights: [
-          'TBMM’nin üstünde hiçbir güç yoktur ilkesi',
-          'Yasama ve yürütme yetkilerinin Meclis’te toplanması',
-        ],
-      },
-      {
-        pageNumber: 588,
-        heading: 'Gençliğe Hitabe ve Kavram Sözlüğü',
-        content: 'Eserin sonunda Gençliğe Hitabe’nin tam metni ve öğrenciler için kapsamlı tarih terimleri sözlüğü bulunur.',
-      },
-    ],
-    is_published: true,
-    created_at: ago(60),
-    category: cat('tarih'),
-  },
-  {
     id: 'bk-5',
     slug: 'kimya-soru-bankasi',
     added_by: demoProfiles.admin.id,

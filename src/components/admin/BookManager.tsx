@@ -28,7 +28,6 @@ const PRESET_COVERS = [
   { label: 'Matematik', path: '/books/temel-matematik.webp' },
   { label: 'Edebiyat', path: '/books/calikusu.webp' },
   { label: 'Fizik', path: '/books/fizik-formul-defteri.webp' },
-  { label: 'Tarih', path: '/books/nutuk.webp' },
   { label: 'Kimya', path: '/books/kimya-soru-bankasi.webp' },
   { label: 'İngilizce', path: '/books/ydt-kelime-kartlari.webp' },
 ]
