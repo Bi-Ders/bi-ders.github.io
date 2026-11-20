@@ -52,8 +52,8 @@ export const siteConfig = {
   shortName: 'biders',
   /** Logo yazısında vurgulanacak kısım (sarı nokta ile gösterilir) */
   logoText: { main: 'Bi Ders', accent: '!' },
-  /** Kendi logonuzu kullanmak için public/ altına koyup yolunu yazın (örn: '/logo.svg'). Boşsa yerleşik logo kullanılır. */
-  logoUrl: '',
+  /** Site logosu — varsayılan olarak public/favicon.svg kullanılır. */
+  logoUrl: '/favicon.svg',
   tagline: 'Öğrenmenin en kısa yolu: bi ders!',
   description:
     'Bi Ders!, ders notlarına, sunulara, oyun ve etkinliklere, online testlere, yazılılara, sınavlara, evraklara ve öğrenci forumuna tek yerden ulaşabileceğiniz ücretsiz ve açık kaynak Türkçe bir eğitim portalıdır.',

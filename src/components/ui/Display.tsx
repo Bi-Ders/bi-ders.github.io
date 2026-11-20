@@ -19,10 +19,22 @@ export function LogoMark({ className }: { className?: string }) {
 }
 
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
+  const logoSrc = siteConfig.logoUrl
+    ? /^https?:\/\//i.test(siteConfig.logoUrl)
+      ? siteConfig.logoUrl
+      : `${import.meta.env.BASE_URL}${siteConfig.logoUrl.replace(/^\//, '')}`
+    : ''
+
   return (
     <Link to="/" className={cn('group inline-flex items-center gap-2.5', className)} aria-label={`${siteConfig.name} ana sayfa`}>
-      {siteConfig.logoUrl ? (
-        <img src={siteConfig.logoUrl} alt="" className="h-9 w-auto" />
+      {logoSrc ? (
+        <img
+          src={logoSrc}
+          alt=""
+          width={36}
+          height={36}
+          className="size-9 shrink-0 rounded-xl transition-transform duration-300 group-hover:-rotate-6"
+        />
       ) : (
         <LogoMark className="transition-transform duration-300 group-hover:-rotate-6" />
       )}
