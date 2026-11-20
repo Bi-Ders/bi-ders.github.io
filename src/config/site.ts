@@ -65,8 +65,8 @@ export const siteConfig = {
 
   contact: {
     email: 'iletisim@biders.org',
-    phone: '+90 (212) 000 00 00',
-    address: 'İstanbul, Türkiye',
+    phone: '+90 (374) 000 00 00',
+    address: 'Bolu, Türkiye',
     /** Formda gösterilecek tahmini yanıt süresi */
     responseTime: '1–2 iş günü',
   },
