@@ -1,6 +1,6 @@
 import type { DocumentFormat } from '../../types'
 
-/** Bir dosyayı boyut kontrolüyle Data URL olarak okur */
+/** Bir dosyayı boyut kontrolüyle Data URL olarak okur (Demo Modu) */
 export function readFileAsDataUrl(file: File, maxBytes = 1_500_000): Promise<string> {
   return new Promise((resolve, reject) => {
     if (file.size > maxBytes) {
@@ -22,11 +22,7 @@ export function readFileAsDataUrl(file: File, maxBytes = 1_500_000): Promise<str
   })
 }
 
-/**
- * Yüklenen kitap kapağı görselini canvas ile 480x640 (3:4) boyutuna sıkıştırıp
- * localStorage dostu küçük bir Data URL'ye dönüştürür.
- */
-export function compressImageToDataUrl(file: File, maxW = 480, maxH = 640): Promise<string> {
+function renderImageToCanvas(file: File, maxW: number, maxH: number): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
       reject(new Error('Lütfen geçerli bir görsel dosyası (PNG, JPG, WebP) seçin.'))
@@ -50,13 +46,62 @@ export function compressImageToDataUrl(file: File, maxW = 480, maxH = 640): Prom
           return
         }
         ctx.drawImage(img, 0, 0, w, h)
-        const webp = canvas.toDataURL('image/webp', 0.84)
-        resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.84))
+        resolve(canvas)
       }
       img.src = String(reader.result)
     }
     reader.readAsDataURL(file)
   })
+}
+
+/**
+ * Yüklenen görseli canvas ile en fazla 1200px boyutuna küçültüp WebP File nesnesine
+ * sıkıştırır (Cloudflare R2 yüklemeleri ve Demo Modu öncesi standart optimizasyon).
+ */
+export async function compressImageToWebPFile(
+  file: File,
+  maxDimension = 1200,
+  quality = 0.84,
+): Promise<File> {
+  const canvas = await renderImageToCanvas(file, maxDimension, maxDimension)
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'gorsel'
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (webpBlob) => {
+        if (webpBlob && webpBlob.type === 'image/webp') {
+          resolve(webpBlob)
+          return
+        }
+        canvas.toBlob(
+          (jpgBlob) => {
+            if (jpgBlob) resolve(jpgBlob)
+            else reject(new Error('Görsel sıkıştırılamadı.'))
+          },
+          'image/jpeg',
+          quality,
+        )
+      },
+      'image/webp',
+      quality,
+    )
+  })
+
+  const ext = blob.type === 'image/webp' ? 'webp' : 'jpg'
+  return new File([blob], `${baseName}.${ext}`, {
+    type: blob.type || 'image/webp',
+    lastModified: Date.now(),
+  })
+}
+
+/**
+ * Yüklenen görseli canvas ile en fazla 1200px WebP olarak sıkıştırıp
+ * Demo Modu (localStorage) için Data URL'ye dönüştürür.
+ */
+export async function compressImageToDataUrl(file: File, maxW = 1200, maxH = 1200): Promise<string> {
+  const canvas = await renderImageToCanvas(file, maxW, maxH)
+  const webp = canvas.toDataURL('image/webp', 0.84)
+  return webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.84)
 }
 
 /** Dosya uzantısından doküman formatını algılar */

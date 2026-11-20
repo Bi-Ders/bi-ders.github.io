@@ -1,0 +1,16 @@
+name = "biders-r2-upload"
+main = "src/index.ts"
+compatibility_date = "2025-11-01"
+workers_dev = true
+
+[vars]
+PUBLIC_CDN_URL = "https://cdn.biders.org"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "biders-files"
+preview_bucket_name = "biders-files-preview"
+
+# Gizli ortam değişkenlerini (secrets) Wrangler ile tanımlayın:
+#   npx wrangler secret put SUPABASE_URL
+#   npx wrangler secret put SUPABASE_ANON_KEY

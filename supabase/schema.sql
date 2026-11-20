@@ -13,7 +13,7 @@
 --    4. Tetikleyiciler (yeni kullanıcı profili, sayaçlar, yetki korumaları)
 --    5. RPC fonksiyonları (test gönderme / puanlama)
 --    6. Row Level Security (RLS) politikaları
---    7. Storage bucket'ları ve politikaları
+--    7. Storage bucket'ları (DEVRE DIŞI / OPSİYONEL — Cloudflare R2 kullanılır)
 --    8. Başlangıç verileri (kategoriler)
 --
 --  İlk admin kullanıcısını atamak için (SQL Editor'de, service role ile):
@@ -222,8 +222,8 @@ create table if not exists public.books (
   isbn           text check (isbn ~ '^[0-9Xx-]{10,17}$'),
   description    text check (char_length(description) <= 3000),
   grade          text,
-  cover_url      text,
-  file_url       text,                -- book-files bucket'ındaki yol
+  cover_url      text,                -- Cloudflare R2 CDN URL (https://cdn.biders.org/...)
+  file_url       text,                -- Cloudflare R2 CDN URL (https://cdn.biders.org/...)
   external_url   text,
   page_count     int check (page_count > 0),
   published_year int check (published_year between 1800 and 2100),
@@ -954,9 +954,14 @@ create policy "reports_delete_admin" on public.reports
 
 
 -- ---------------------------------------------------------------------
--- 8. STORAGE BUCKET'LARI
---    Dosya yolu kuralı: <bucket>/<kullanici_uuid>/<dosya_adi>
+-- 8. STORAGE BUCKET'LARI (DEVRE DIŞI / OPSİYONEL)
+--    Dosya yükleme ve barındırma katmanı Cloudflare R2'ye taşınmıştır
+--    (bkz. workers/r2-upload/). Veritabanı tablolarında (contents, books,
+--    profiles) yalnızca Cloudflare R2 CDN dosya URL'leri tutulur.
+--    Yalnızca geriye dönük Supabase Storage kullanmak isterseniz aşağıdaki
+--    yorum bloğunu açabilirsiniz.
 -- ---------------------------------------------------------------------
+/*
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   ('avatars',           'avatars',           true,    2097152, array['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
@@ -1036,7 +1041,6 @@ create policy "book_covers_delete_staff" on storage.objects
   using (bucket_id = 'book-covers' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
 
 -- 8.4 book-files — ÖZEL bucket: yalnızca giriş yapmış kullanıcılar okur
---     (istemcide createSignedUrl ile indirilir), öğretmen/admin yazar
 drop policy if exists "book_files_read_auth" on storage.objects;
 create policy "book_files_read_auth" on storage.objects
   for select to authenticated
@@ -1073,6 +1077,7 @@ drop policy if exists "forum_attachments_delete_own_or_staff" on storage.objects
 create policy "forum_attachments_delete_own_or_staff" on storage.objects
   for delete to authenticated
   using (bucket_id = 'forum-attachments' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_staff()));
+*/
 
 
 -- ---------------------------------------------------------------------

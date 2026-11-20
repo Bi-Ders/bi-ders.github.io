@@ -92,6 +92,169 @@ const demoStore = {
 }
 
 // ---------------------------------------------------------------
+// Dosya Yükleme & Silme Katmanı (Cloudflare R2 Worker / Demo Modu)
+// ---------------------------------------------------------------
+export const MAX_R2_UPLOAD_BYTES = 25 * 1024 * 1024 // 25 MB
+
+export type UploadedFileResult = {
+  url: string
+  key: string | null
+  size: number
+  contentType: string
+  provider: 'r2' | 'demo'
+}
+
+function getUploadApiUrl(): string {
+  const raw = (import.meta.env.VITE_UPLOAD_API_URL ?? '').trim().replace(/\/$/, '')
+  if (!raw) return ''
+  try {
+    const parsed = new URL(raw)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString().replace(/\/$/, '') : ''
+  } catch {
+    return ''
+  }
+}
+
+/** Cloudflare R2 Worker (VITE_UPLOAD_API_URL) yapılandırılmış mı? */
+export function isR2UploadConfigured(): boolean {
+  return Boolean(getUploadApiUrl())
+}
+
+function fileToDataUrl(file: File, maxBytes: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (file.size > maxBytes) {
+      const mb = (maxBytes / (1024 * 1024)).toFixed(1)
+      reject(
+        new Error(
+          `Dosya boyutu Demo Modu sınırını (${mb} MB) aşıyor. Daha küçük bir dosya seçin veya harici dosya linki (URL) girin.`,
+        ),
+      )
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result)
+      else reject(new Error('Dosya okunamadı.'))
+    }
+    reader.onerror = () => reject(new Error('Dosya okunurken bir hata oluştu.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function getSupabaseAccessToken(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
+
+/**
+ * Dosyayı yükler:
+ * - VITE_UPLOAD_API_URL tanımlıysa Cloudflare R2 Worker'a (FormData + Supabase access_token) gönderir.
+ * - Tanımlı değilse mevcut Demo Modu davranışını (Data URL) korur.
+ */
+export async function uploadFile(
+  file: File,
+  options: { folder?: string; maxDemoBytes?: number } = {},
+): Promise<UploadedFileResult> {
+  const uploadApiUrl = getUploadApiUrl()
+
+  if (!uploadApiUrl) {
+    const url = await fileToDataUrl(file, options.maxDemoBytes ?? 1_500_000)
+    return {
+      url,
+      key: null,
+      size: file.size,
+      contentType: file.type,
+      provider: 'demo',
+    }
+  }
+
+  if (file.size > MAX_R2_UPLOAD_BYTES) {
+    throw new Error('Dosya boyutu en fazla 25 MB olabilir.')
+  }
+
+  const accessToken = await getSupabaseAccessToken()
+  if (!accessToken) {
+    throw new Error('Dosya yüklemek için geçerli bir öğretmen veya yönetici oturumu ile giriş yapmalısınız.')
+  }
+
+  const formData = new FormData()
+  formData.append('file', file, file.name)
+  if (options.folder) {
+    formData.append('folder', options.folder)
+  }
+
+  const response = await fetch(`${uploadApiUrl}/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  })
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    url?: string
+    key?: string
+    size?: number
+    contentType?: string
+    error?: string
+  }
+
+  if (!response.ok || !payload.url) {
+    throw new Error(payload.error ?? `Dosya yüklenemedi (HTTP ${response.status}).`)
+  }
+
+  return {
+    url: payload.url,
+    key: payload.key ?? null,
+    size: payload.size ?? file.size,
+    contentType: payload.contentType ?? file.type,
+    provider: 'r2',
+  }
+}
+
+/**
+ * Cloudflare R2'deki dosyayı siler (DELETE /delete).
+ * Demo Modu'nda veya yerel/harici URL'lerde sessizce atlanır.
+ */
+export async function deleteUploadedFile(
+  urlOrKey: string | null | undefined,
+  options: { silent?: boolean } = {},
+): Promise<boolean> {
+  const trimmed = urlOrKey?.trim()
+  if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('/')) {
+    return false
+  }
+
+  const uploadApiUrl = getUploadApiUrl()
+  if (!uploadApiUrl) return false
+
+  const accessToken = await getSupabaseAccessToken()
+  if (!accessToken) {
+    if (options.silent) return false
+    throw new Error('Dosya silmek için geçerli bir öğretmen veya yönetici oturumu gereklidir.')
+  }
+
+  const isUrl = /^https?:\/\//i.test(trimmed)
+  const response = await fetch(`${uploadApiUrl}/delete`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(isUrl ? { url: trimmed } : { key: trimmed }),
+  })
+
+  if (!response.ok) {
+    if (options.silent) return false
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new Error(payload.error ?? `Dosya silinemedi (HTTP ${response.status}).`)
+  }
+
+  return true
+}
+
+// ---------------------------------------------------------------
 // Forum Demo Yardımcıları (localStorage kalıcılığı)
 // ---------------------------------------------------------------
 type TopicPatch = Partial<Pick<ForumTopic, 'is_pinned' | 'is_locked' | 'is_solved' | 'reply_count' | 'last_activity_at' | 'view_count'>>
@@ -359,14 +522,24 @@ export async function createContent(input: CreateContentInput, author: AuthorSum
 export async function deleteContent(contentId: string): Promise<void> {
   if (!supabase) {
     await demoDelay(150)
+    const target = getMergedDemoContents().find((c) => c.id === contentId)
     const deleted = demoStore.get<string[]>('contents_deleted', [])
     if (!deleted.includes(contentId)) {
       demoStore.set('contents_deleted', [...deleted, contentId])
     }
+    if (target?.file_url) void deleteUploadedFile(target.file_url, { silent: true })
+    if (target?.cover_url) void deleteUploadedFile(target.cover_url, { silent: true })
     return
   }
-  const { error } = await supabase.from('contents').delete().eq('id', contentId)
+  const { data, error } = await supabase
+    .from('contents')
+    .delete()
+    .eq('id', contentId)
+    .select('file_url, cover_url')
+    .maybeSingle()
   fail(error)
+  if (data?.file_url) void deleteUploadedFile(String(data.file_url), { silent: true })
+  if (data?.cover_url) void deleteUploadedFile(String(data.cover_url), { silent: true })
 }
 
 // ---------------------------------------------------------------
@@ -478,10 +651,12 @@ export async function createModuleResource(
 
 export async function deleteModuleResource(resourceId: string): Promise<void> {
   await demoDelay(140)
+  const target = getMergedDemoResources().find((r) => r.id === resourceId)
   const deleted = demoStore.get<string[]>('deleted_resources', [])
   if (!deleted.includes(resourceId)) {
     demoStore.set('deleted_resources', [...deleted, resourceId])
   }
+  if (target?.file_url) void deleteUploadedFile(target.file_url, { silent: true })
 }
 
 export function recordResourceDownload(resourceId: string): number {
@@ -1332,14 +1507,24 @@ export async function updateBook(bookId: string, input: BookInput): Promise<Book
 export async function deleteBook(bookId: string): Promise<void> {
   if (!supabase) {
     await demoDelay(140)
+    const target = getMergedDemoBooks().find((b) => b.id === bookId)
     const deleted = demoStore.get<string[]>('books_deleted', [])
     if (!deleted.includes(bookId)) {
       demoStore.set('books_deleted', [...deleted, bookId])
     }
+    if (target?.cover_url) void deleteUploadedFile(target.cover_url, { silent: true })
+    if (target?.file_url) void deleteUploadedFile(target.file_url, { silent: true })
     return
   }
-  const { error } = await supabase.from('books').delete().eq('id', bookId)
+  const { data, error } = await supabase
+    .from('books')
+    .delete()
+    .eq('id', bookId)
+    .select('cover_url, file_url')
+    .maybeSingle()
   fail(error)
+  if (data?.cover_url) void deleteUploadedFile(String(data.cover_url), { silent: true })
+  if (data?.file_url) void deleteUploadedFile(String(data.file_url), { silent: true })
 }
 
 // ---------------------------------------------------------------

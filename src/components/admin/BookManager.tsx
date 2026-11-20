@@ -14,10 +14,18 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { createBook, deleteBook, getBooks, updateBook } from '../../services/api'
+import {
+  createBook,
+  deleteBook,
+  deleteUploadedFile,
+  getBooks,
+  isR2UploadConfigured,
+  updateBook,
+  uploadFile,
+} from '../../services/api'
 import { useAsync } from '../../hooks'
 import { detectPaymentProvider, formatPrice, isSafeHttpUrl } from '../../lib/utils'
-import { compressImageToDataUrl, readFileAsDataUrl } from './fileHelpers'
+import { compressImageToWebPFile } from './fileHelpers'
 import { BookCover } from '../books/BookCover'
 import { Badge } from '../ui/Display'
 import { Button } from '../ui/Button'
@@ -54,8 +62,12 @@ export function BookManager({
   const [price, setPrice] = useState('199')
   const [externalUrl, setExternalUrl] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
+  const [uploadedCoverKey, setUploadedCoverKey] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [fileUrl, setFileUrl] = useState('')
   const [uploadedPdfName, setUploadedPdfName] = useState<string | null>(null)
+  const [uploadedPdfKey, setUploadedPdfKey] = useState<string | null>(null)
+  const [uploadingPdf, setUploadingPdf] = useState(false)
   const [pageCount, setPageCount] = useState('240')
   const [publishedYear, setPublishedYear] = useState('2026')
   const [isbn, setIsbn] = useState('')
@@ -66,6 +78,7 @@ export function BookManager({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ text: string; slug?: string } | null>(null)
 
+  const r2Enabled = isR2UploadConfigured()
   const books = useAsync(() => getBooks(), [])
 
   const resetForm = () => {
@@ -80,8 +93,10 @@ export function BookManager({
     setPrice('199')
     setExternalUrl('')
     setCoverUrl('')
+    setUploadedCoverKey(null)
     setFileUrl('')
     setUploadedPdfName(null)
+    setUploadedPdfKey(null)
     setPageCount('240')
     setPublishedYear('2026')
     setIsbn('')
@@ -103,8 +118,10 @@ export function BookManager({
     setPrice(book.price != null ? String(book.price) : '0')
     setExternalUrl(book.external_url ?? '')
     setCoverUrl(book.cover_url ?? '')
+    setUploadedCoverKey(null)
     setFileUrl(book.file_url ?? '')
     setUploadedPdfName(book.file_url?.startsWith('data:') ? 'Yüklenmiş Örnek PDF' : null)
+    setUploadedPdfKey(null)
     setPageCount(book.page_count ? String(book.page_count) : '')
     setPublishedYear(book.published_year ? String(book.published_year) : '2026')
     setIsbn(book.isbn ?? '')
@@ -117,12 +134,19 @@ export function BookManager({
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
+    setUploadingCover(true)
     try {
-      const compressed = await compressImageToDataUrl(file)
-      setCoverUrl(compressed)
+      const webpFile = await compressImageToWebPFile(file, 1200)
+      const uploaded = await uploadFile(webpFile, { folder: 'book-covers', maxDemoBytes: 1_500_000 })
+      if (uploadedCoverKey) {
+        void deleteUploadedFile(uploadedCoverKey, { silent: true })
+      }
+      setCoverUrl(uploaded.url)
+      setUploadedCoverKey(uploaded.key)
     } catch (err) {
       setError((err as Error).message)
     } finally {
+      setUploadingCover(false)
       e.target.value = ''
     }
   }
@@ -131,13 +155,19 @@ export function BookManager({
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
+    setUploadingPdf(true)
     try {
-      const dataUrl = await readFileAsDataUrl(file, 1_500_000)
-      setFileUrl(dataUrl)
+      const uploaded = await uploadFile(file, { folder: 'book-files', maxDemoBytes: 1_500_000 })
+      if (uploadedPdfKey) {
+        void deleteUploadedFile(uploadedPdfKey, { silent: true })
+      }
+      setFileUrl(uploaded.url)
       setUploadedPdfName(file.name)
+      setUploadedPdfKey(uploaded.key)
     } catch (err) {
       setError((err as Error).message)
     } finally {
+      setUploadingPdf(false)
       e.target.value = ''
     }
   }
@@ -419,13 +449,25 @@ export function BookManager({
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-white px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
                     <ImagePlus className="size-3.5 text-brand" aria-hidden />
-                    <span>Görsel Yükle</span>
-                    <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} />
+                    <span>{uploadingCover ? 'Yükleniyor…' : 'Görsel Yükle'}</span>
+                    <input
+                      type="file"
+                      accept="image/webp,image/png,image/jpeg,image/*"
+                      className="sr-only"
+                      disabled={uploadingCover}
+                      onChange={handleCoverUpload}
+                    />
                   </label>
                   {coverUrl && (
                     <button
                       type="button"
-                      onClick={() => setCoverUrl('')}
+                      onClick={() => {
+                        if (uploadedCoverKey) {
+                          void deleteUploadedFile(uploadedCoverKey, { silent: true })
+                          setUploadedCoverKey(null)
+                        }
+                        setCoverUrl('')
+                      }}
                       className="rounded-lg px-2 py-1 text-xs font-bold text-muted hover:bg-white hover:text-ink"
                     >
                       Otomatik Kapağa Dön
@@ -463,8 +505,14 @@ export function BookManager({
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-white px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
                     <FileUp className="size-3.5 text-brand" aria-hidden />
-                    <span>PDF Yükle</span>
-                    <input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={handlePdfUpload} />
+                    <span>{uploadingPdf ? 'Yükleniyor…' : 'PDF Yükle'}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      className="sr-only"
+                      disabled={uploadingPdf}
+                      onChange={handlePdfUpload}
+                    />
                   </label>
                   {uploadedPdfName && (
                     <span className="inline-flex items-center gap-1 rounded-md bg-success-soft px-2 py-1 text-[11px] font-bold text-success">
@@ -472,6 +520,10 @@ export function BookManager({
                       <button
                         type="button"
                         onClick={() => {
+                          if (uploadedPdfKey) {
+                            void deleteUploadedFile(uploadedPdfKey, { silent: true })
+                            setUploadedPdfKey(null)
+                          }
                           setFileUrl('')
                           setUploadedPdfName(null)
                         }}
@@ -483,7 +535,9 @@ export function BookManager({
                   )}
                 </div>
                 <p className="mt-2 text-[11px] text-muted">
-                  Boş bırakılsa bile detay sayfasında otomatik örnek sayfa okuyucu oluşturulur.
+                  {r2Enabled
+                    ? 'Cloudflare R2’ye en fazla 25 MB PDF yüklenebilir; boş bırakılırsa otomatik örnek okuyucu açılır.'
+                    : 'Boş bırakılsa bile detay sayfasında otomatik örnek sayfa okuyucu oluşturulur.'}
                 </p>
               </div>
             </div>
@@ -647,6 +701,7 @@ export function BookManager({
             type="submit"
             variant="sun"
             loading={busy}
+            disabled={uploadingCover || uploadingPdf}
             icon={editingId ? <Save className="size-4" aria-hidden /> : <Plus className="size-4" aria-hidden />}
           >
             {editingId ? 'Değişiklikleri Kaydet' : 'Kitabı Mağazaya Ekle'}

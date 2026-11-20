@@ -15,8 +15,11 @@ import {
   createModuleResource,
   deleteContent,
   deleteModuleResource,
+  deleteUploadedFile,
   getAllModuleResources,
   getManagedContents,
+  isR2UploadConfigured,
+  uploadFile,
 } from '../../services/api'
 import { useAsync } from '../../hooks'
 import {
@@ -27,7 +30,7 @@ import {
   isSafeHttpUrl,
   resourceModuleLabels,
 } from '../../lib/utils'
-import { detectDocumentFormat, readFileAsDataUrl } from './fileHelpers'
+import { compressImageToWebPFile, detectDocumentFormat } from './fileHelpers'
 import { Badge, Chip } from '../ui/Display'
 import { Button } from '../ui/Button'
 import { Alert, EmptyState, ErrorState, RowSkeleton } from '../ui/Feedback'
@@ -85,6 +88,8 @@ export function ResourceManager({
   const [sourceMode, setSourceMode] = useState<'link' | 'file'>('link')
   const [fileUrl, setFileUrl] = useState('')
   const [uploadedName, setUploadedName] = useState<string | null>(null)
+  const [uploadedR2Key, setUploadedR2Key] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [summary, setSummary] = useState('')
   const [bodyText, setBodyText] = useState('')
   const [tagsRaw, setTagsRaw] = useState('')
@@ -94,6 +99,7 @@ export function ResourceManager({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ text: string; href: string; linkLabel: string } | null>(null)
 
+  const r2Enabled = isR2UploadConfigured()
   const resources = useAsync(() => getAllModuleResources(), [])
   const lessons = useAsync(() => getManagedContents(userId, isAdmin), [userId, isAdmin])
 
@@ -101,25 +107,37 @@ export function ResourceManager({
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
+    setUploading(true)
     try {
-      const dataUrl = await readFileAsDataUrl(file, 1_500_000)
-      setFileUrl(dataUrl)
-      setUploadedName(file.name)
-      setFormat(detectDocumentFormat(file.name))
-      setFileSize(formatFileSize(file.size))
+      const prepared = file.type.startsWith('image/') ? await compressImageToWebPFile(file, 1200) : file
+      const folder = target === 'lesson' ? 'contents' : target
+      const uploaded = await uploadFile(prepared, { folder, maxDemoBytes: 1_500_000 })
+      if (uploadedR2Key) {
+        void deleteUploadedFile(uploadedR2Key, { silent: true })
+      }
+      setFileUrl(uploaded.url)
+      setUploadedName(prepared.name)
+      setUploadedR2Key(uploaded.key)
+      setFormat(detectDocumentFormat(prepared.name))
+      setFileSize(formatFileSize(uploaded.size))
       if (!title.trim()) {
         setTitle(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))
       }
     } catch (err) {
       setError((err as Error).message)
     } finally {
+      setUploading(false)
       e.target.value = ''
     }
   }
 
   const clearAttachment = () => {
+    if (uploadedR2Key) {
+      void deleteUploadedFile(uploadedR2Key, { silent: true })
+    }
     setFileUrl('')
     setUploadedName(null)
+    setUploadedR2Key(null)
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -200,6 +218,7 @@ export function ResourceManager({
       setTagsRaw('')
       setFileUrl('')
       setUploadedName(null)
+      setUploadedR2Key(null)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -475,11 +494,12 @@ export function ResourceManager({
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink">
                 <FileUp className="size-4 text-brand" aria-hidden />
-                <span>PDF / PPTX / DOCX Seç</span>
+                <span>{uploading ? 'Yükleniyor…' : 'PDF / PPTX / DOCX / ZIP Seç'}</span>
                 <input
                   type="file"
-                  accept=".pdf,.ppt,.pptx,.doc,.docx,application/pdf"
+                  accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.webp,.png,.jpg,.jpeg,application/pdf"
                   className="sr-only"
+                  disabled={uploading}
                   onChange={handleFilePick}
                 />
               </label>
@@ -499,7 +519,9 @@ export function ResourceManager({
                 </span>
               ) : (
                 <span className="text-xs text-muted">
-                  Demo Modu için en fazla 1.5 MB dosya tarayıcıda saklanır; büyük dosyalar için Harici Link kullanabilirsiniz.
+                  {r2Enabled
+                    ? 'Cloudflare R2’ye en fazla 25 MB (PDF, PPTX, DOCX, ZIP, görsel) yükleyebilirsiniz.'
+                    : 'Demo Modu için en fazla 1.5 MB dosya tarayıcıda saklanır; büyük dosyalar için Harici Link kullanabilirsiniz.'}
                 </span>
               )}
             </div>
@@ -550,7 +572,7 @@ export function ResourceManager({
             />
           </div>
 
-          <Button type="submit" variant="sun" loading={busy} icon={<Plus className="size-4" aria-hidden />}>
+          <Button type="submit" variant="sun" loading={busy} disabled={uploading} icon={<Plus className="size-4" aria-hidden />}>
             İçeriği Yayınla
           </Button>
         </div>
