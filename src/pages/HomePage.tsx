@@ -29,7 +29,6 @@ export function HomePage() {
       <section className="border-b border-line bg-paper-deep/50">
         <div className="container-page grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-12 lg:py-20">
           <div className="animate-fade-up lg:col-span-7">
-            <p className="eyebrow mb-3">Ücretsiz · Türkçe · Mobil Öncelikli</p>
             <h1 className="text-4xl leading-[1.08] font-extrabold sm:text-5xl lg:text-[54px]">
               Öğrenmenin en kısa yolu: <span className="marker">Bi Ders!</span>
             </h1>

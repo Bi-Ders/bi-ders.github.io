@@ -1,7 +1,7 @@
 # Bi Ders! (`biders`)
 
 > **Öğrenmenin en kısa yolu: bi ders!**  
-> Açık kaynak, ücretsiz, reklamsız ve **PWA** destekli mobil öncelikli Türkçe eğitim portalı.
+> Açık kaynak, ücretsiz, reklamsız ve **PWA** destekli mobil öncelikli eğitim platformu.
 
 🌐 **Canlı Demo:** [https://bi-ders.github.io/](https://bi-ders.github.io/)  
 📦 **GitHub Deposu:** [https://github.com/Bi-Ders/bi-ders.github.io](https://github.com/Bi-Ders/bi-ders.github.io)  
@@ -11,7 +11,7 @@
 
 ## Vizyon ve Öne Çıkanlar
 
-**Bi Ders!**, öğrencilerin ve öğretmenlerin nitelikli ders materyallerine hiçbir ücret duvarına veya dikkat dağıtıcı reklama takılmadan tek bir noktadan ulaşabilmesi için geliştirilen açık kaynak bir eğitim portalıdır.
+**Bi Ders!**, öğrencilerin ve öğretmenlerin nitelikli ders materyallerine hiçbir ücret duvarına veya dikkat dağıtıcı reklama takılmadan tek bir noktadan ulaşabilmesi için geliştirilen açık kaynak bir eğitim platformudur.
 
 - **%100 Ücretsiz, Reklamsız ve Açık Kaynak:** Tüm temel eğitim materyalleri, testler ve topluluk alanları herkese açıktır.
 - **PWA (Progressive Web App) & Mobil Öncelikli:** `public/manifest.json`, `apple-touch-icon.png` ve uyarlanabilir (`maskable`) ikon setiyle iOS ve Android cihazlarda **"Ana Ekrana Ekle"** destekli, tam ekran (`standalone`) uygulama deneyimi sunar.

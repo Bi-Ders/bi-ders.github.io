@@ -56,7 +56,7 @@ export const siteConfig = {
   logoUrl: '/favicon.svg',
   tagline: 'Öğrenmenin en kısa yolu: bi ders!',
   description:
-    'Bi Ders!, ders notlarına, sunulara, oyun ve etkinliklere, online testlere, yazılılara, sınavlara, evraklara ve öğrenci forumuna tek yerden ulaşabileceğiniz ücretsiz ve açık kaynak Türkçe bir eğitim portalıdır.',
+    'Bi Ders!, ders notlarına, sunulara, oyun ve etkinliklere, online testlere, yazılılara, sınavlara, evraklara ve öğrenci forumuna tek yerden ulaşabileceğiniz ücretsiz ve açık kaynak bir eğitim platformudur.',
   /** Yayın adresi (sonda / olmadan). OAuth dönüşleri için VITE_SITE_URL önceliklidir. */
   url: 'https://bi-ders.github.io',
   githubUrl: GITHUB_REPO_URL,
