@@ -1,4 +1,4 @@
-import type { Difficulty, Role, ContentType } from '../types'
+import type { BookPaymentProvider, ContentType, Difficulty, ResourceModuleKey, Role } from '../types'
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
@@ -32,6 +32,55 @@ export function timeAgo(value: string | null | undefined) {
 
 export function formatNumber(n: number) {
   return new Intl.NumberFormat('tr-TR').format(n)
+}
+
+/** Türk Lirası biçimlendirme (0 veya boş ise Ücretsiz) */
+export function formatPrice(price: number | null | undefined) {
+  if (price == null || Number.isNaN(price) || price <= 0) return 'Ücretsiz'
+  const hasDecimals = Math.round(price * 100) % 100 !== 0
+  return `${new Intl.NumberFormat('tr-TR', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(price)} ₺`
+}
+
+/** public/ altındaki varlıkları BASE_URL ile uyumlu hale getirir */
+export function assetUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  const trimmed = path.trim()
+  if (!trimmed) return null
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed
+  const base = import.meta.env.BASE_URL || '/'
+  if (trimmed.startsWith('/')) {
+    return `${base.replace(/\/$/, '')}${trimmed}`
+  }
+  return `${base.replace(/\/$/, '')}/${trimmed}`
+}
+
+/** Güvenli HTTP/HTTPS URL kontrolü */
+export function isSafeHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim())
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+/** Harici ödeme linkinden sağlayıcı algılama (Shopier / iyzico / Diğer) */
+export function detectPaymentProvider(url: string | null | undefined): { key: BookPaymentProvider; label: string } {
+  if (!url) return { key: 'other', label: 'Harici Ödeme' }
+  const lower = url.toLowerCase()
+  if (lower.includes('shopier')) return { key: 'shopier', label: 'Shopier' }
+  if (lower.includes('iyzi')) return { key: 'iyzico', label: 'iyzico' }
+  return { key: 'other', label: 'Güvenli Ödeme' }
+}
+
+/** Bayt değerini okunabilir dosya boyutuna çevirir */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 /** Türkçe karakterleri dönüştürerek URL dostu kısa ad üretir */
@@ -89,6 +138,14 @@ export const contentTypeLabels: Record<ContentType, string> = {
   article: 'Makale',
   video: 'Video',
   document: 'Doküman',
+}
+
+export const resourceModuleLabels: Record<ResourceModuleKey, string> = {
+  'ders-notlari': 'Ders Notları',
+  sunular: 'Sunular',
+  yazililar: 'Yazılılar',
+  sinavlar: 'Sınavlar',
+  evraklar: 'Evraklar',
 }
 
 export const isEmail = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim())

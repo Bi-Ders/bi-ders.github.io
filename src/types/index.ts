@@ -206,21 +206,38 @@ export type InteractiveActivity = {
   created_at: string
 }
 
+export type BookSamplePage = {
+  pageNumber: number
+  heading: string
+  content: string
+  highlights?: string[]
+  tip?: string
+}
+
+export type BookPaymentProvider = 'shopier' | 'iyzico' | 'other'
+
 export type Book = {
   id: string
+  slug: string
   added_by: string | null
   category_id: string | null
   title: string
   author: string | null
+  author_title?: string | null
+  author_bio?: string | null
   publisher: string | null
   isbn: string | null
   description: string | null
   grade: string | null
+  price?: number | null
   cover_url: string | null
   file_url: string | null
   external_url: string | null
+  payment_provider?: BookPaymentProvider | null
   page_count: number | null
   published_year: number | null
+  highlights?: string[]
+  sample_pages?: BookSamplePage[]
   is_published: boolean
   created_at: string
   category?: Category | null
@@ -269,6 +286,7 @@ export type AdminStats = {
   contents: number
   topics: number
   quizzes: number
+  activities: number
   books: number
   newMessages: number
 }

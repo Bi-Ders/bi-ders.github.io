@@ -19,9 +19,19 @@ const ALLOWED_EMBED_HOSTS: Record<string, ActivityProvider> = {
   'phet.colorado.edu': 'html5',
   'view.genially.com': 'html5',
   'view.genial.ly': 'html5',
+  'geogebra.org': 'html5',
+  'www.geogebra.org': 'html5',
+  'educaplay.com': 'html5',
+  'www.educaplay.com': 'html5',
+  'scratch.mit.edu': 'html5',
+  'liveworksheets.com': 'html5',
+  'www.liveworksheets.com': 'html5',
+  'desmos.com': 'html5',
+  'www.desmos.com': 'html5',
 }
 
-export const allowedEmbedDomainsText = 'wordwall.net, h5p.org, learningapps.org, phet.colorado.edu, view.genially.com'
+export const allowedEmbedDomainsText =
+  'wordwall.net, h5p.org, learningapps.org, phet.colorado.edu, view.genially.com, geogebra.org, educaplay.com, scratch.mit.edu, desmos.com'
 
 export function validateEmbedUrl(raw: string): { valid: boolean; normalized?: string; provider?: ActivityProvider; error?: string } {
   const trimmed = raw.trim()

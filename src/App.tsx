@@ -13,6 +13,7 @@ import { ForumDetailPage } from './pages/ForumDetailPage'
 import { ResourceModulePage } from './pages/ResourceModulePage'
 import { ActivitiesPage } from './pages/ActivitiesPage'
 import { BooksPage } from './pages/BooksPage'
+import { BookDetailPage } from './pages/BookDetailPage'
 import { SearchPage } from './pages/SearchPage'
 import { AboutPage } from './pages/AboutPage'
 import { ContactPage } from './pages/ContactPage'
@@ -80,6 +81,7 @@ export function App() {
               <Route path="dersler" element={<LessonsPage />} />
               <Route path="dersler/:slug" element={<LessonDetailPage />} />
               <Route path="kitaplar" element={<BooksPage />} />
+              <Route path="kitaplar/:slug" element={<BookDetailPage />} />
               <Route path="ara" element={<SearchPage />} />
               <Route path="hakkimizda" element={<AboutPage />} />
               <Route path="iletisim" element={<ContactPage />} />

@@ -168,7 +168,17 @@ export function ResourceModulePage({ module }: { module: ResourceModuleKey }) {
     setDownloadCounts((prev) => ({ ...prev, [resource.id]: nextCount }))
 
     if (resource.file_url) {
-      window.open(resource.file_url, '_blank', 'noopener,noreferrer')
+      if (resource.file_url.startsWith('data:')) {
+        const ext = resource.format.toLowerCase()
+        const a = document.createElement('a')
+        a.href = resource.file_url
+        a.download = `${slugify(resource.title) || resource.id}.${ext}`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      } else {
+        window.open(resource.file_url, '_blank', 'noopener,noreferrer')
+      }
     } else {
       const html = buildPrintableHtml(resource, modConfig.label)
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
@@ -182,7 +192,7 @@ export function ResourceModulePage({ module }: { module: ResourceModuleKey }) {
       URL.revokeObjectURL(url)
     }
 
-    setToast(`"${resource.title}" indirildi (${resource.format} / yazdırılabilir sürüm).`)
+    setToast(`"${resource.title}" indirildi (${resource.format}).`)
   }
 
   return (
@@ -474,6 +484,34 @@ function DocumentPreviewModal({
         {/* Önizleme gövdesi */}
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
           <p className="text-[15px] leading-relaxed text-ink-soft">{resource.summary}</p>
+
+          {resource.file_url && (
+            <div className="rounded-2xl border border-brand/25 bg-brand-soft/45 p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-ink">
+                  Ekli Dosya ({resource.format} · {resource.file_size})
+                </span>
+                {!resource.file_url.startsWith('data:') && (
+                  <a
+                    href={resource.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-brand hover:underline"
+                  >
+                    Dosyayı Yeni Sekmede Aç →
+                  </a>
+                )}
+              </div>
+              {(resource.file_url.startsWith('data:application/pdf') ||
+                resource.file_url.toLowerCase().endsWith('.pdf')) && (
+                <iframe
+                  src={resource.file_url}
+                  title={`${resource.title} PDF önizleme`}
+                  className="mt-3 h-80 w-full rounded-xl border border-line bg-white"
+                />
+              )}
+            </div>
+          )}
 
           <div className="space-y-4">
             {resource.preview_sections.map((section, idx) => (

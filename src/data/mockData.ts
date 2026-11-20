@@ -500,15 +500,370 @@ export const mockQuizResults: QuizResult[] = [
 ]
 
 // ---------------------------------------------------------------
-// Kitaplar
+// Kitaplar (Mağaza & Açık Kütüphane)
 // ---------------------------------------------------------------
 export const mockBooks: Book[] = [
-  { id: 'bk-1', added_by: demoProfiles.admin.id, category_id: cat('matematik').id, title: 'Temel Matematik Konu Anlatımı', author: 'Bi Ders! Matematik Ekibi', publisher: 'Bi Ders! Yayınları', isbn: null, description: 'TYT matematik konularının sade ve örnekli anlatımı.', grade: 'TYT', cover_url: null, file_url: null, external_url: null, page_count: 312, published_year: 2026, is_published: true, created_at: ago(20), category: cat('matematik') },
-  { id: 'bk-2', added_by: demoProfiles.admin.id, category_id: cat('edebiyat').id, title: 'Çalıkuşu', author: 'Reşat Nuri Güntekin', publisher: 'Telif Hakkı Serbest', isbn: null, description: 'Feride\'nin Anadolu\'da öğretmenlik serüveni. Okuma listesinin vazgeçilmezi.', grade: 'Genel', cover_url: null, file_url: null, external_url: null, page_count: 456, published_year: 1922, is_published: true, created_at: ago(40), category: cat('edebiyat') },
-  { id: 'bk-3', added_by: demoProfiles.admin.id, category_id: cat('fizik').id, title: 'Fizik Formül Defteri', author: 'Ayşe Kaya', publisher: 'Bi Ders! Yayınları', isbn: null, description: 'Lise fiziğinin tüm formülleri, birimleri ve kısa açıklamaları.', grade: '9–12. Sınıf', cover_url: null, file_url: null, external_url: null, page_count: 96, published_year: 2025, is_published: true, created_at: ago(25), category: cat('fizik') },
-  { id: 'bk-4', added_by: demoProfiles.admin.id, category_id: cat('tarih').id, title: 'Nutuk', author: 'Mustafa Kemal Atatürk', publisher: 'Telif Hakkı Serbest', isbn: null, description: 'Kurtuluş Savaşı ve Cumhuriyet\'in kuruluşunu birinci ağızdan anlatan eser.', grade: 'Genel', cover_url: null, file_url: null, external_url: null, page_count: 600, published_year: 1927, is_published: true, created_at: ago(60), category: cat('tarih') },
-  { id: 'bk-5', added_by: demoProfiles.admin.id, category_id: cat('kimya').id, title: 'Kimya Soru Bankası', author: 'Emre Şahin', publisher: 'Bi Ders! Yayınları', isbn: null, description: 'Konu konu ayrılmış, çözümlü 800 kimya sorusu.', grade: '10–11. Sınıf', cover_url: null, file_url: null, external_url: null, page_count: 288, published_year: 2026, is_published: true, created_at: ago(8), category: cat('kimya') },
-  { id: 'bk-6', added_by: demoProfiles.admin.id, category_id: cat('ingilizce').id, title: 'YDT Kelime Kartları', author: 'Bi Ders! Dil Ekibi', publisher: 'Bi Ders! Yayınları', isbn: null, description: 'Sınavda en sık çıkan 1.500 kelime, örnek cümleleriyle.', grade: 'YDT', cover_url: null, file_url: null, external_url: null, page_count: 140, published_year: 2026, is_published: true, created_at: ago(11), category: cat('ingilizce') },
+  {
+    id: 'bk-1',
+    slug: 'temel-matematik-konu-anlatimi',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('matematik').id,
+    title: 'Temel Matematik Konu Anlatımı',
+    author: 'Murat Demir & Bi Ders! Matematik Ekibi',
+    author_title: 'Matematik Öğretmeni · 15 Yıl Deneyim',
+    author_bio:
+      'Lise ve YKS hazırlık öğrencileri için sade, sezgisel anlatımlar hazırlayan Bi Ders! matematik kurucu editörü.',
+    publisher: 'Bi Ders! Yayınları',
+    isbn: '978-605-9124-01-4',
+    description:
+      'TYT matematik konularını sıfırdan sınav seviyesine taşıyan sade, görsel ve çözümlü konu anlatım kitabı. Her bölümde günlük hayattan somut örnekler, öğretmen ipuçları ve kademeli pekiştirme testleri bulunur.',
+    grade: 'TYT',
+    price: 249,
+    cover_url: '/books/temel-matematik.webp',
+    file_url: '/books/samples/temel-matematik-ornek.pdf',
+    external_url: 'https://www.shopier.com/ShowProductNew/products.php?id=biders-temel-matematik',
+    payment_provider: 'shopier',
+    page_count: 312,
+    published_year: 2026,
+    highlights: [
+      'Güncel ÖSYM ve MEB kazanımlarıyla %100 uyumlu 14 temel ünite',
+      '420 adım adım çözümlü örnek ve pratik hızlandırma notları',
+      'Her ünite sonunda kendini dene alıştırmaları ve QR kodlu ek testler',
+      'Basılı kitap + yüksek kaliteli dijital özet föy desteği',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 12,
+        heading: 'Bölüm 1: Temel Kavramlar ve Sayı Kümeleri',
+        content:
+          'TYT Matematik testinin temeli sayı kümelerini doğru tanımak ve aralarındaki kapsama ilişkisini sezgisel olarak kavrayabilmektir.',
+        highlights: [
+          'Doğal Sayılar (N) = {0, 1, 2, 3, ...} — Sayma sayıları 1’den başlar.',
+          'Tam Sayılar (Z) = {..., -2, -1, 0, 1, 2, ...}',
+          'Rasyonel Sayılar (Q): a ve b tam sayı, b ≠ 0 olmak üzere a/b biçimindeki sayılar.',
+          'Reel Sayılar (R): Rasyonel ve irrasyonel sayıların birleşimi (N ⊂ Z ⊂ Q ⊂ R).',
+        ],
+        tip: 'Soru kökünde "tam sayı" ifadesi varsa değer verme, "gerçel sayı" ifadesi varsa eşitsizlik kurma yöntemini tercih edin.',
+      },
+      {
+        pageNumber: 48,
+        heading: 'Çözümlü Örnek: Tek ve Çift Sayı Analizi',
+        content:
+          'Örnek 14: a, b ve c birer tam sayı olmak üzere (3a + 1)·b = 2c + 5 eşitliği veriliyor. Buna göre a + b toplamı hakkında ne söylenebilir?',
+        highlights: [
+          'Sağ taraftaki 2c her tam sayı c için çifttir; 2c + 5 daima TEK sayıdır.',
+          'Çarpım tek olduğundan her iki çarpan tek olmalıdır: (3a + 1) tek ve b tek.',
+          '3a + 1 tek ise a kesinlikle ÇİFT sayıdır; a + b toplamı her zaman TEK olur.',
+        ],
+      },
+      {
+        pageNumber: 104,
+        heading: 'Ünite Sonu Kendini Dene (Mini Alıştırma)',
+        content: 'Her ünitenin sonunda konuyu pekiştiren kademeli alıştırmalar ve çözüm anahtarları yer alır.',
+        highlights: [
+          'Ardışık 5 tek doğal sayının toplamı 115 ise en büyüğü kaçtır? (Cevap: 27)',
+          'x, y ∈ Z⁺ ve x + y = 18 ise x·y en fazla kaçtır? (Cevap: 81)',
+        ],
+      },
+    ],
+    is_published: true,
+    created_at: ago(20),
+    category: cat('matematik'),
+  },
+  {
+    id: 'bk-2',
+    slug: 'calikusu-aciklamali-ogrenci-baskisi',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('edebiyat').id,
+    title: 'Çalıkuşu',
+    author: 'Reşat Nuri Güntekin',
+    author_title: 'Türk Edebiyatı Klasik Yazarı · Açıklamalı Baskı',
+    author_bio:
+      'Cumhuriyet dönemi Türk edebiyatının öncü romancısı. Bu özel öğrenci baskısı Bi Ders! edebiyat öğretmenleri tarafından sözlük ve tahlil notlarıyla zenginleştirilmiştir.',
+    publisher: 'Bi Ders! Klasikler',
+    isbn: '978-605-9124-02-1',
+    description:
+      'Feride’nin İstanbul’dan Anadolu’nun köylerine uzanan öğretmenlik serüveni. Lise okuma listeleri ve AYT Edebiyat hazırlığı için sayfa altı kelime açıklamaları ve bölüm sonu tema analizleriyle hazırlanmış özel baskı.',
+    grade: 'Genel / AYT',
+    price: 129,
+    cover_url: '/books/calikusu.webp',
+    file_url: '/books/samples/calikusu-ornek.pdf',
+    external_url: 'https://iyzi.link/biders-calikusu-ogrenci-baskisi',
+    payment_provider: 'iyzico',
+    page_count: 456,
+    published_year: 2025,
+    highlights: [
+      'Tam metin + günümüz okuru için sayfa altı Osmanlıca sözcük sözlüğü',
+      'Bölüm sonlarında AYT Edebiyat odaklı karakter ve bakış açısı tahlilleri',
+      'Feride’nin Anadolu yolculuğu kronoloji haritası ve tartışma soruları',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 7,
+        heading: 'Eser Hakkında ve Dönem Arka Planı',
+        content:
+          'İlk kez 1922 yılında yayımlanan Çalıkuşu, Anadolu gerçekliğini ve idealist genç öğretmenin eğitim mücadelesini en içten dille anlatan başyapıtlardan biridir.',
+        highlights: [
+          'Günümüz okuru için sayfa altı sözcük açıklamaları',
+          'Bölüm sonlarında tema, bakış açısı ve karakter tahlilleri',
+        ],
+        tip: 'Roman büyük ölçüde Feride’nin günlüğü biçiminde (kahraman bakış açısıyla) yazılmıştır.',
+      },
+      {
+        pageNumber: 19,
+        heading: 'Birinci Bölüm’den Seçme Metin',
+        content:
+          'Çocukluğumun en neşeli günleri, büyük bahçedeki ağaçların dallarında geçti. Arkadaşlarım benim bir türlü yerinde duramayan halime bakıp bana "Çalıkuşu" adını taktılar.',
+        highlights: [
+          'Anlatıcı: Feride (1. tekil kişi — samimi günlük üslubu)',
+          'Dil Özellikleri: Sade, akıcı, konuşma diline yakın İstanbul Türkçesi',
+        ],
+      },
+      {
+        pageNumber: 442,
+        heading: 'Okuma Sonrası Tartışma & Sınav Soruları',
+        content: 'Eserin sonunda hem sınıf içi değerlendirme hem de AYT hazırlığı için açık uçlu inceleme soruları bulunur.',
+        highlights: [
+          'Feride’nin Anadolu’da öğretmenlik yapma kararının toplumsal arka planı',
+          'Hayrullah Bey karakterinin romanın çözüm bölümündeki işlevi',
+        ],
+      },
+    ],
+    is_published: true,
+    created_at: ago(40),
+    category: cat('edebiyat'),
+  },
+  {
+    id: 'bk-3',
+    slug: 'fizik-formul-defteri',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('fizik').id,
+    title: 'Fizik Formül Defteri',
+    author: 'Ayşe Kaya',
+    author_title: 'Fizik Öğretmeni · Ankara Fen Lisesi',
+    author_bio:
+      'Görsel fizik şemaları ve birim analizi odaklı ders notlarıyla tanınan fizik öğretmeni. 9–12. sınıf müfredatının tüm kritik bağıntılarını tek cep kitabında topladı.',
+    publisher: 'Bi Ders! Yayınları',
+    isbn: '978-605-9124-03-8',
+    description:
+      'Lise fiziğinin tüm formülleri, SI birimleri, vektör şemaları ve kısa açıklamaları bir arada. Deneme sınavları öncesi 15 dakikada hızlı tekrar yapabilmek için cep boy tasarlandı.',
+    grade: '9–12. Sınıf',
+    price: 139,
+    cover_url: '/books/fizik-formul-defteri.webp',
+    file_url: '/books/samples/fizik-formul-defteri-ornek.pdf',
+    external_url: 'https://www.shopier.com/ShowProductNew/products.php?id=biders-fizik-formul-defteri',
+    payment_provider: 'shopier',
+    page_count: 96,
+    published_year: 2025,
+    highlights: [
+      '9, 10, 11 ve 12. sınıf tüm TYT-AYT fizik formülleri tek defterde',
+      'Her formülün yanında SI birim analizi ve sık yapılan hata uyarıları',
+      'Spiralli cep boy tasarım ve renkli konu sekmeleri',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 6,
+        heading: 'Bölüm 1: Hareket, Kuvvet ve Newton Yasaları',
+        content: 'Fizikte formülleri ezberlemek yerine birim analizini ve fiziksel anlamını bilmek kalıcı hız sağlar.',
+        highlights: [
+          'Ortalama Hız: v_ort = Δx / Δt (m/s)',
+          'İvme: a = Δv / Δt (m/s²)',
+          'Newton’un 2. Yasası: F_net = m · a (1 N = 1 kg·m/s²)',
+        ],
+        tip: 'Eşitliğin iki tarafındaki SI birimleri her zaman özdeş olmalıdır.',
+      },
+      {
+        pageNumber: 34,
+        heading: 'Bölüm 4: Elektrik Devreleri ve Ohm Yasası',
+        content: 'Seri ve paralel direnç bağlantılarında akım, gerilim ve elektriksel güç hesaplamaları.',
+        highlights: [
+          'Ohm Yasası: V = I · R',
+          'Elektriksel Güç: P = V · I = I² · R = V² / R (Watt)',
+        ],
+      },
+      {
+        pageNumber: 68,
+        heading: 'Bölüm 8: Dalgalar ve Optik Hızlı Kart',
+        content: 'Dalga hızı, kırılma yasaları ve mercek görüntü özellikleri özet tablosu.',
+        highlights: [
+          'Dalga Hızı: v = λ · f (Hız ortama, frekans kaynağa bağlıdır)',
+          'Snell Yasası: n₁ · sin(θ₁) = n₂ · sin(θ₂)',
+        ],
+      },
+    ],
+    is_published: true,
+    created_at: ago(25),
+    category: cat('fizik'),
+  },
+  {
+    id: 'bk-4',
+    slug: 'nutuk-gencler-icin-aciklamali-baski',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('tarih').id,
+    title: 'Nutuk',
+    author: 'Mustafa Kemal Atatürk',
+    author_title: 'Türkiye Cumhuriyeti Kurucusu · Açıklamalı Tarih Baskısı',
+    author_bio:
+      'Kurtuluş Savaşı ve Cumhuriyet’in kuruluş sürecini 1919’dan 1927’ye birinci elden belgelerle aktaran tarihî başyapıt. Öğrenciler için haritalar ve sadeleştirilmiş dipnotlarla hazırlanmıştır.',
+    publisher: 'Bi Ders! Klasikler',
+    isbn: '978-605-9124-04-5',
+    description:
+      'Kurtuluş Savaşı’nı ve Türkiye Cumhuriyeti’nin kuruluşunu birinci ağızdan anlatan temel eser. Gençler için paralel günümüz Türkçesi dipnotları, cephe haritaları ve antlaşma özet tabloları içerir.',
+    grade: 'Genel / YKS',
+    price: 159,
+    cover_url: '/books/nutuk.webp',
+    file_url: '/books/samples/nutuk-ornek.pdf',
+    external_url: 'https://iyzi.link/biders-nutuk-ozel-baski',
+    payment_provider: 'iyzico',
+    page_count: 600,
+    published_year: 2026,
+    highlights: [
+      '600 sayfalık tam metin ve paralel günümüz Türkçesi kelime dipnotları',
+      '32 sayfalık Kurtuluş Savaşı cephe haritaları ve kronoloji şemaları',
+      'TYT-AYT İnkılap Tarihi konularıyla doğrudan eşleştirilmiş kavram dizini',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 9,
+        heading: '19 Mayıs 1919 — Samsun’a Çıkış',
+        content: '1919 yılı Mayısının 19’uncu günü Samsun’a çıktım. Genel vaziyet ve manzara…',
+        highlights: [
+          '19 Mayıs 1919: Millî Mücadele’nin fiilî başlangıcı',
+          '22 Haziran 1919: Amasya Genelgesi ile amaç, gerekçe ve yöntemin ilanı',
+        ],
+        tip: 'Nutuk, 1919–1927 yılları arasını kapsar; 1927 sonrası inkılaplar eser kapsamı dışındadır.',
+      },
+      {
+        pageNumber: 214,
+        heading: 'TBMM’nin Açılışı ve Millî Egemenlik',
+        content: '23 Nisan 1920’de Türkiye Büyük Millet Meclisi’nin açılmasıyla millî egemenlik ilkesinin kurumsallaşması.',
+        highlights: [
+          'TBMM’nin üstünde hiçbir güç yoktur ilkesi',
+          'Yasama ve yürütme yetkilerinin Meclis’te toplanması',
+        ],
+      },
+      {
+        pageNumber: 588,
+        heading: 'Gençliğe Hitabe ve Kavram Sözlüğü',
+        content: 'Eserin sonunda Gençliğe Hitabe’nin tam metni ve öğrenciler için kapsamlı tarih terimleri sözlüğü bulunur.',
+      },
+    ],
+    is_published: true,
+    created_at: ago(60),
+    category: cat('tarih'),
+  },
+  {
+    id: 'bk-5',
+    slug: 'kimya-soru-bankasi',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('kimya').id,
+    title: 'Kimya Soru Bankası',
+    author: 'Emre Şahin',
+    author_title: 'Kimya Öğretmeni · Bi Ders! Eğitim Ekibi',
+    author_bio:
+      'Organik ve genel kimya soru yazarlığı alanında 12 yıllık deneyime sahip kimya öğretmeni. Öğrencilerin en çok hata yaptığı hesaplama adımlarını hedef alan özgün sorular üretir.',
+    publisher: 'Bi Ders! Yayınları',
+    isbn: '978-605-9124-05-2',
+    description:
+      '10. ve 11. sınıf kimya konularını kavrama, uygulama ve ÖSYM tarzı üç kademede pekiştiren 800 tamamen çözümlü soru. Her ünite başında tek sayfalık hızlı formül özeti bulunur.',
+    grade: '10–11. Sınıf',
+    price: 279,
+    cover_url: '/books/kimya-soru-bankasi.webp',
+    file_url: '/books/samples/kimya-soru-bankasi-ornek.pdf',
+    external_url: 'https://www.shopier.com/ShowProductNew/products.php?id=biders-kimya-soru-bankasi',
+    payment_provider: 'shopier',
+    page_count: 288,
+    published_year: 2026,
+    highlights: [
+      '800 özgün ve tamamı adım adım çözümlü kimya sorusu',
+      '48 konu kavrama testi + 6 karma tarama denemesi',
+      'Mol, asit-baz, gazlar, çözeltiler ve kimyasal denge için hata uyarı kutuları',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 14,
+        heading: 'Ünite 1: Mol Kavramı — Kazanım Testi 1',
+        content: 'Kavrama, Uygulama ve ÖSYM Tarzı üç kademeli soru dizilimi ile adım adım ustalaşma.',
+        highlights: [
+          '0,4 mol CH₄ gazının kütlesi ve toplam atom sayısı hesabı',
+          'Normal koşullarda 5,6 L CO₂ içindeki oksijen atomu sayısı',
+        ],
+        tip: 'Eşit kütle sorularında iki gazın mol kütlelerinin ortak katını seçmek kesirli işlemleri ortadan kaldırır.',
+      },
+      {
+        pageNumber: 92,
+        heading: 'Ünite 3: Asitler, Bazlar ve Nötralleşme',
+        content: 'Tesir değerliği üzerinden tam nötralleşme tepkimelerinin pratik çözümü.',
+        highlights: ['H₂SO₄ + 2 NaOH → Na₂SO₄ + 2 H₂O tepkime katsayı analizi'],
+      },
+      {
+        pageNumber: 244,
+        heading: 'Çözüm Anahtarı ve Hata Takip Çizelgesi',
+        content: 'Her sorunun ayrıntılı yazılı çözümü ve ünite bazlı eksik kazanım takip tablosu.',
+      },
+    ],
+    is_published: true,
+    created_at: ago(8),
+    category: cat('kimya'),
+  },
+  {
+    id: 'bk-6',
+    slug: 'ydt-kelime-kartlari',
+    added_by: demoProfiles.admin.id,
+    category_id: cat('ingilizce').id,
+    title: 'YDT Kelime Kartları',
+    author: 'Bi Ders! Dil Ekibi',
+    author_title: 'Yabancı Dil Zümresi · YDT / YDS Uzmanları',
+    author_bio:
+      'Son 10 yılın ÖSYM YDT ve YDS çıkmış sorularını derlem bilimi (corpus) yaklaşımıyla analiz eden İngilizce öğretmenleri ekibi.',
+    publisher: 'Bi Ders! Yayınları',
+    isbn: '978-605-9124-06-9',
+    description:
+      'Sınavda en sık çıkan 1.500 akademik İngilizce kelime; eş anlamlıları, edat kullanımları, phrasal verb çiftleri ve bağlam içi örnek cümleleriyle aralıklı tekrar formatında.',
+    grade: 'YDT',
+    price: 189,
+    cover_url: '/books/ydt-kelime-kartlari.webp',
+    file_url: '/books/samples/ydt-kelime-kartlari-ornek.pdf',
+    external_url: 'https://iyzi.link/biders-ydt-kelime-kartlari',
+    payment_provider: 'iyzico',
+    page_count: 140,
+    published_year: 2026,
+    highlights: [
+      'Frekans analizli 1.500 akademik kelime + eş/zıt anlam tablosu',
+      'Her kartta sınav formatında örnek cümle ve boşluk doldurma alıştırması',
+      'Aralıklı tekrar (1-3-7 gün) çalışma planlayıcısı',
+    ],
+    sample_pages: [
+      {
+        pageNumber: 8,
+        heading: 'Set 1: En Sık Çıkan Akademik Fiiller (Verbs)',
+        content: 'Eş anlamlıları ve bağlam içi örnek cümleleriyle sınav odaklı temel fiil kartları.',
+        highlights: [
+          'alleviate (v) — hafifletmek, azaltmak (Syn: ease, relieve)',
+          'deteriorate (v) — kötüleşmek, bozulmak (Syn: worsen, decline)',
+          'scrutinize (v) — titizlikle incelemek (Syn: examine, inspect)',
+        ],
+        tip: 'Her gün 20 kart çalışın; 1., 3. ve 7. günlerde yalnızca zorlandığınız kartları tekrar edin.',
+      },
+      {
+        pageNumber: 64,
+        heading: 'Set 6: Phrasal Verbs & Prepositional Phrases',
+        content: 'YDT’de en sık karıştırılan phrasal verb çiftlerinin karşılaştırmalı incelemesi.',
+        highlights: [
+          'put off (ertelemek) vs. put out (söndürmek)',
+          'bring about (sebep olmak) · carry out (yürütmek) · account for (açıklamak/oranını oluşturmak)',
+        ],
+      },
+      {
+        pageNumber: 122,
+        heading: 'Mini Kelime Testi ve Eş Anlam Dizini',
+        content: 'Her set sonunda bağlam içi pekiştirme testleri ve alfabetik hızlı tarama dizini.',
+      },
+    ],
+    is_published: true,
+    created_at: ago(11),
+    category: cat('ingilizce'),
+  },
 ]
 
 // ---------------------------------------------------------------

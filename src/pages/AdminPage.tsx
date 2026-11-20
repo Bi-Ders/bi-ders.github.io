@@ -1,26 +1,65 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { BookMarked, BookOpen, ClipboardCheck, Mail, MessageSquare, Users } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  BookMarked,
+  BookOpen,
+  ClipboardCheck,
+  Gamepad2,
+  Mail,
+  Users,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAsync, usePageMeta } from '../hooks'
-import { getAdminStats, getAllProfiles, getContactMessages, getManagedContents, setUserRole } from '../services/api'
+import {
+  getAdminStats,
+  getAllProfiles,
+  getCategories,
+  getContactMessages,
+  setUserRole,
+} from '../services/api'
 import { formatDate, roleLabels } from '../lib/utils'
-import type { Role } from '../types'
+import type { AuthorSummary, Role } from '../types'
+import { ResourceManager } from '../components/admin/ResourceManager'
+import { ActivityManager } from '../components/admin/ActivityManager'
+import { QuizManager } from '../components/admin/QuizManager'
+import { BookManager } from '../components/admin/BookManager'
 import { Avatar, Badge, Chip, PageHeader, RoleBadge } from '../components/ui/Display'
 import { Alert, EmptyState, ErrorState, RowSkeleton, Skeleton } from '../components/ui/Feedback'
 
-type AdminTab = 'contents' | 'messages' | 'users'
+type AdminTab = 'resources' | 'activities' | 'quizzes' | 'books' | 'messages' | 'users'
+
+const VALID_TABS: AdminTab[] = ['resources', 'activities', 'quizzes', 'books', 'messages', 'users']
 
 export function AdminPage() {
-  usePageMeta('Yönetim Paneli')
-  const { user, isAdmin } = useAuth()
-  const [tab, setTab] = useState<AdminTab>('contents')
+  usePageMeta('Yönetim Paneli', 'Bi Ders! içerik ekleme, test oluşturma, oyun-etkinlik ve kitap mağazası yönetimi.')
+  const { user, profile, isAdmin, isDemo } = useAuth()
+  const [params, setParams] = useSearchParams()
   const [feedback, setFeedback] = useState<string | null>(null)
 
+  const rawTab = params.get('sekme') as AdminTab | null
+  const tab: AdminTab =
+    rawTab && VALID_TABS.includes(rawTab) && (isAdmin || (rawTab !== 'messages' && rawTab !== 'users'))
+      ? rawTab
+      : 'resources'
+
+  const setTab = (nextTab: AdminTab) => {
+    const next = new URLSearchParams(params)
+    next.set('sekme', nextTab)
+    setParams(next, { replace: true })
+    setFeedback(null)
+  }
+
   const stats = useAsync(() => getAdminStats(), [])
-  const contents = useAsync(() => (user ? getManagedContents(user.id, isAdmin) : Promise.resolve([])), [user?.id, isAdmin])
+  const categories = useAsync(() => getCategories(), [])
   const messages = useAsync(() => (isAdmin ? getContactMessages() : Promise.resolve([])), [isAdmin])
   const users = useAsync(() => (isAdmin ? getAllProfiles() : Promise.resolve([])), [isAdmin])
+
+  const currentAuthor: AuthorSummary = {
+    id: profile?.id ?? user?.id ?? 'admin',
+    full_name: profile?.full_name ?? 'Bi Ders! Editör',
+    avatar_url: profile?.avatar_url ?? null,
+    role: profile?.role ?? 'admin',
+  }
 
   const handleRoleChange = async (userId: string, role: Role) => {
     setFeedback(null)
@@ -36,36 +75,54 @@ export function AdminPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Yönetim Paneli"
-        title="İçerik ve topluluk yönetimi"
-        description={isAdmin ? 'Yönetici yetkisiyle tüm istatistikleri, içerikleri, mesajları ve kullanıcı rollerini yönetebilirsin.' : 'Öğretmen hesabınla kendi ders notlarını ve içeriklerini takip edebilirsin.'}
+        eyebrow={isDemo ? 'Yönetim Paneli · Demo Modu (localStorage Kalıcı)' : 'Yönetim Paneli'}
+        title="İçerik, modül ve mağaza yönetimi"
+        description={
+          isAdmin
+            ? 'Ders notları, sunular, yazılılar, evraklar, iframe oyun/etkinlikler, online testler ve kitap mağazasını tek yerden yönet. Eklediğin her içerik ilgili modül sayfasında anında yayınlanır.'
+            : 'Öğretmen hesabınla ders notları, sunular, etkinlikler, online testler ve kitap kayıtları oluşturabilirsin.'
+        }
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {stats.loading ? (
             Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)
           ) : stats.data ? (
             <>
-              <StatTile icon={<Users className="size-4" />} label="Üyeler" value={stats.data.users} />
-              <StatTile icon={<BookOpen className="size-4" />} label="Dersler" value={stats.data.contents} />
-              <StatTile icon={<MessageSquare className="size-4" />} label="Forum" value={stats.data.topics} />
-              <StatTile icon={<ClipboardCheck className="size-4" />} label="Testler" value={stats.data.quizzes} />
+              <StatTile icon={<BookOpen className="size-4" />} label="Doküman & Ders" value={stats.data.contents} />
+              <StatTile icon={<Gamepad2 className="size-4" />} label="Oyun & Etkinlik" value={stats.data.activities} />
+              <StatTile icon={<ClipboardCheck className="size-4" />} label="Online Test" value={stats.data.quizzes} />
               <StatTile icon={<BookMarked className="size-4" />} label="Kitaplar" value={stats.data.books} />
-              <StatTile icon={<Mail className="size-4" />} label="Yeni Mesaj" value={stats.data.newMessages} highlight={stats.data.newMessages > 0} />
+              <StatTile icon={<Users className="size-4" />} label="Üyeler" value={stats.data.users} />
+              <StatTile
+                icon={<Mail className="size-4" />}
+                label="Yeni Mesaj"
+                value={stats.data.newMessages}
+                highlight={stats.data.newMessages > 0}
+              />
             </>
           ) : null}
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Chip active={tab === 'contents'} onClick={() => setTab('contents')}>
-            İçerikler ({contents.data?.length ?? 0})
+        <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Yönetim paneli sekmeleri">
+          <Chip active={tab === 'resources'} onClick={() => setTab('resources')}>
+            <BookOpen className="size-3.5" aria-hidden /> Doküman &amp; Dersler
+          </Chip>
+          <Chip active={tab === 'activities'} onClick={() => setTab('activities')}>
+            <Gamepad2 className="size-3.5" aria-hidden /> Oyun &amp; Etkinlikler
+          </Chip>
+          <Chip active={tab === 'quizzes'} onClick={() => setTab('quizzes')}>
+            <ClipboardCheck className="size-3.5" aria-hidden /> Online Testler
+          </Chip>
+          <Chip active={tab === 'books'} onClick={() => setTab('books')}>
+            <BookMarked className="size-3.5" aria-hidden /> Kitap Mağazası
           </Chip>
           {isAdmin && (
             <>
               <Chip active={tab === 'messages'} onClick={() => setTab('messages')}>
-                İletişim Mesajları ({messages.data?.length ?? 0})
+                <Mail className="size-3.5" aria-hidden /> Mesajlar ({messages.data?.length ?? 0})
               </Chip>
               <Chip active={tab === 'users'} onClick={() => setTab('users')}>
-                Kullanıcılar ({users.data?.length ?? 0})
+                <Users className="size-3.5" aria-hidden /> Kullanıcılar ({users.data?.length ?? 0})
               </Chip>
             </>
           )}
@@ -79,38 +136,38 @@ export function AdminPage() {
           </Alert>
         )}
 
-        {tab === 'contents' && (
-          <div className="card divide-y divide-line overflow-hidden">
-            {contents.loading ? (
-              <>
-                <RowSkeleton />
-                <RowSkeleton />
-                <RowSkeleton />
-              </>
-            ) : contents.error ? (
-              <div className="p-5">
-                <ErrorState message={contents.error} onRetry={contents.reload} />
-              </div>
-            ) : !contents.data?.length ? (
-              <div className="p-6">
-                <EmptyState icon={<BookOpen className="size-6" />} title="Henüz içerik yok" />
-              </div>
-            ) : (
-              contents.data.map((c) => (
-                <Link key={c.id} to={`/dersler/${c.slug}`} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 transition hover:bg-paper/70">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-ink">{c.title}</p>
-                    <p className="text-xs text-muted">
-                      {c.category?.name ?? 'Genel'} · {c.author?.full_name ?? '—'} · {formatDate(c.created_at)}
-                    </p>
-                  </div>
-                  <Badge tone={c.status === 'published' ? 'success' : 'neutral'}>
-                    {c.status === 'published' ? 'Yayında' : c.status === 'draft' ? 'Taslak' : c.status}
-                  </Badge>
-                </Link>
-              ))
-            )}
-          </div>
+        {tab === 'resources' && user && (
+          <ResourceManager
+            categories={categories.data ?? []}
+            author={currentAuthor}
+            userId={user.id}
+            isAdmin={isAdmin}
+            onChanged={stats.reload}
+          />
+        )}
+
+        {tab === 'activities' && (
+          <ActivityManager
+            categories={categories.data ?? []}
+            author={currentAuthor}
+            onChanged={stats.reload}
+          />
+        )}
+
+        {tab === 'quizzes' && (
+          <QuizManager
+            categories={categories.data ?? []}
+            author={currentAuthor}
+            onChanged={stats.reload}
+          />
+        )}
+
+        {tab === 'books' && user && (
+          <BookManager
+            categories={categories.data ?? []}
+            userId={user.id}
+            onChanged={stats.reload}
+          />
         )}
 
         {tab === 'messages' && isAdmin && (

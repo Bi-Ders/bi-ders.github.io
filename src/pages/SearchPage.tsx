@@ -2,7 +2,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { BookMarked, BookOpen, ClipboardCheck, MessageSquare, Search } from 'lucide-react'
 import { useAsync, usePageMeta } from '../hooks'
 import { searchAll } from '../services/api'
-import { difficultyLabels, timeAgo } from '../lib/utils'
+import { difficultyLabels, formatPrice, timeAgo } from '../lib/utils'
+import { BookCover } from '../components/books/BookCover'
 import { SearchBar } from '../components/layout/SearchBar'
 import { Badge, CategoryTag, PageHeader } from '../components/ui/Display'
 import { EmptyState, ErrorState, GridSkeleton } from '../components/ui/Feedback'
@@ -107,9 +108,15 @@ export function SearchPage() {
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {res.data!.books.map((b) => (
-                    <Link key={b.id} to={`/kitaplar?ara=${encodeURIComponent(b.title)}`} className="card card-hover p-5">
-                      <h3 className="font-sans text-base font-bold">{b.title}</h3>
-                      {b.author && <p className="mt-1 text-sm text-muted">{b.author}</p>}
+                    <Link key={b.id} to={`/kitaplar/${b.slug}`} className="card card-hover flex gap-3.5 p-4">
+                      <BookCover book={b} size="xs" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-sans text-base font-bold">{b.title}</h3>
+                        {b.author && <p className="mt-0.5 truncate text-xs text-muted">{b.author}</p>}
+                        <div className="mt-2">
+                          <Badge tone={b.price && b.price > 0 ? 'sun' : 'success'}>{formatPrice(b.price)}</Badge>
+                        </div>
+                      </div>
                     </Link>
                   ))}
                 </div>

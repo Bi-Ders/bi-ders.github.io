@@ -5,7 +5,8 @@ import { siteConfig } from '../config/site'
 import { useAuth } from '../context/AuthContext'
 import { useAsync, usePageMeta } from '../hooks'
 import { getBooks, getCategories, getContents, getForumTopics, getQuizzes } from '../services/api'
-import { contentTypeLabels, difficultyLabels, formatNumber, timeAgo } from '../lib/utils'
+import { contentTypeLabels, difficultyLabels, formatNumber, formatPrice, timeAgo } from '../lib/utils'
+import { BookCover } from '../components/books/BookCover'
 import { SearchBar } from '../components/layout/SearchBar'
 import { ModuleIcon } from '../components/modules/ModuleIcon'
 import { Button, ButtonLink } from '../components/ui/Button'
@@ -328,19 +329,15 @@ export function HomePage() {
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {(books.data ?? []).map((b) => (
-                <Link key={b.id} to={`/kitaplar?ara=${encodeURIComponent(b.title)}`} className="card card-hover flex gap-4 p-4">
-                  <div
-                    className="flex h-28 w-20 shrink-0 flex-col justify-between rounded-xl p-2.5 text-white shadow-sm"
-                    style={{ backgroundColor: b.category?.color ?? '#12204A' }}
-                    aria-hidden
-                  >
-                    <span className="text-[10px] font-bold uppercase opacity-80">{b.category?.name ?? 'Kitap'}</span>
-                    <span className="line-clamp-3 font-display text-xs leading-tight font-extrabold">{b.title}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 font-sans text-base font-bold text-ink">{b.title}</h3>
-                    {b.author && <p className="mt-0.5 truncate text-sm text-muted">{b.author}</p>}
-                    <div className="mt-3 flex flex-wrap gap-1.5">
+                <Link key={b.id} to={`/kitaplar/${b.slug}`} className="card card-hover flex gap-4 p-4">
+                  <BookCover book={b} size="sm" />
+                  <div className="flex min-w-0 flex-1 flex-col justify-between">
+                    <div>
+                      <h3 className="line-clamp-2 font-sans text-base font-bold text-ink">{b.title}</h3>
+                      {b.author && <p className="mt-0.5 truncate text-sm text-muted">{b.author}</p>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      <Badge tone={b.price && b.price > 0 ? 'sun' : 'success'}>{formatPrice(b.price)}</Badge>
                       {b.grade && <Badge tone="neutral">{b.grade}</Badge>}
                       {b.page_count && <Badge tone="neutral">{b.page_count} sf.</Badge>}
                     </div>

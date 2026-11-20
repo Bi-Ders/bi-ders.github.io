@@ -7,7 +7,7 @@
  * kullanılır (Demo Modu).
  */
 import { supabase } from '../lib/supabase'
-import { matches } from '../lib/utils'
+import { detectPaymentProvider, matches, slugify } from '../lib/utils'
 import {
   mockBooks,
   mockCategories,
@@ -27,10 +27,14 @@ import type {
   AdminStats,
   AuthorSummary,
   Book,
+  BookSamplePage,
   Category,
   ContactInput,
   ContactMessage,
   Content,
+  ContentType,
+  Difficulty,
+  DocumentFormat,
   FavoriteItemType,
   FavoriteResolved,
   ForumReply,
@@ -44,6 +48,7 @@ import type {
   QuizSubmissionDetail,
   QuizSubmissionResult,
   ResourceModuleKey,
+  ResourcePreviewSection,
   Role,
   SearchResults,
 } from '../types'
@@ -73,6 +78,15 @@ const demoStore = {
       localStorage.setItem(`biders:demo:${key}`, JSON.stringify(value))
     } catch {
       /* depolama kapalıysa sessizce yok say */
+    }
+  },
+  setStrict(key: string, value: unknown) {
+    try {
+      localStorage.setItem(`biders:demo:${key}`, JSON.stringify(value))
+    } catch {
+      throw new Error(
+        'Tarayıcı yerel depolama alanı (localStorage) doldu. Daha küçük bir dosya yükleyin veya harici dosya linki (PDF/Drive URL) kullanın.',
+      )
     }
   },
 }
@@ -130,6 +144,91 @@ function getMergedDemoReplies(): ForumReply[] {
 }
 
 // ---------------------------------------------------------------
+// Demo Modu Birleştirme Yardımcıları (İçerik, Doküman, Etkinlik, Test, Kitap)
+// ---------------------------------------------------------------
+function getMergedDemoContents(): Content[] {
+  const added = demoStore.get<Content[]>('contents_added', [])
+  const deleted = new Set(demoStore.get<string[]>('contents_deleted', []))
+  return [...added, ...mockContents]
+    .filter((c) => !deleted.has(c.id))
+    .sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at))
+}
+
+function getMergedDemoResources(): ModuleResource[] {
+  const added = demoStore.get<ModuleResource[]>('custom_resources', [])
+  const deleted = new Set(demoStore.get<string[]>('deleted_resources', []))
+  const downloadOffsets = demoStore.get<Record<string, number>>('resource_downloads', {})
+
+  return [...added, ...mockModuleResources]
+    .filter((r) => !deleted.has(r.id))
+    .map((r) => ({
+      ...r,
+      download_count: r.download_count + (downloadOffsets[r.id] ?? 0),
+    }))
+    .sort((a, b) => b.published_at.localeCompare(a.published_at))
+}
+
+function getMergedDemoActivities(): InteractiveActivity[] {
+  const custom = demoStore.get<InteractiveActivity[]>('custom_activities', [])
+  const deleted = new Set(demoStore.get<string[]>('deleted_activities', []))
+  const playOffsets = demoStore.get<Record<string, number>>('activity_plays', {})
+
+  return [...custom, ...mockActivities]
+    .filter((a) => !deleted.has(a.id))
+    .map((a) => ({
+      ...a,
+      play_count: a.play_count + (playOffsets[a.id] ?? 0),
+    }))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
+
+function getMergedDemoQuizzes(): Quiz[] {
+  const added = demoStore.get<Quiz[]>('custom_quizzes', [])
+  const deleted = new Set(demoStore.get<string[]>('deleted_quizzes', []))
+  const customQuestions = demoStore.get<Record<string, QuizQuestion[]>>('custom_quiz_questions', {})
+
+  return [...added, ...mockQuizzes]
+    .filter((q) => !deleted.has(q.id))
+    .map((q) => ({
+      ...q,
+      question_count: customQuestions[q.id]?.length ?? mockQuizQuestions[q.id]?.length ?? q.question_count ?? 0,
+    }))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
+
+function getMergedDemoQuizQuestions(quizId: string): QuizQuestion[] {
+  const customQuestions = demoStore.get<Record<string, QuizQuestion[]>>('custom_quiz_questions', {})
+  return customQuestions[quizId] ?? mockQuizQuestions[quizId] ?? []
+}
+
+function getMergedDemoBooks(): Book[] {
+  const added = demoStore.get<Book[]>('books_added', [])
+  const patches = demoStore.get<Record<string, Partial<Book>>>('books_patches', {})
+  const deleted = new Set(demoStore.get<string[]>('books_deleted', []))
+
+  return [...added, ...mockBooks]
+    .filter((b) => !deleted.has(b.id))
+    .map((b) => {
+      const patch = patches[b.id]
+      if (!patch) return b
+      const merged: Book = { ...b, ...patch }
+      if (patch.category_id !== undefined) {
+        merged.category = patch.category_id ? mockCategories.find((c) => c.id === patch.category_id) ?? null : null
+      }
+      return merged
+    })
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
+
+const MODULE_GRADIENTS: Record<ResourceModuleKey, string> = {
+  sunular: 'from-amber-500 via-orange-500 to-rose-500',
+  'ders-notlari': 'from-blue-600 via-indigo-600 to-cyan-500',
+  yazililar: 'from-rose-600 via-red-600 to-orange-500',
+  sinavlar: 'from-slate-800 via-blue-900 to-indigo-800',
+  evraklar: 'from-teal-700 via-emerald-700 to-green-600',
+}
+
+// ---------------------------------------------------------------
 // Kategoriler
 // ---------------------------------------------------------------
 export async function getCategories(): Promise<Category[]> {
@@ -143,14 +242,14 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 // ---------------------------------------------------------------
-// İçerikler
+// İçerikler (/dersler)
 // ---------------------------------------------------------------
 type ListOptions = { limit?: number; query?: string; categorySlug?: string }
 
 export async function getContents({ limit, query, categorySlug }: ListOptions = {}): Promise<Content[]> {
   if (!supabase) {
     await demoDelay()
-    let list = [...mockContents].sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
+    let list = getMergedDemoContents().filter((c) => c.status === 'published')
     if (categorySlug) list = list.filter((c) => c.category?.slug === categorySlug)
     if (query) list = list.filter((c) => matches([c.title, c.summary, c.category?.name, ...c.tags], query))
     return limit ? list.slice(0, limit) : list
@@ -171,7 +270,7 @@ export async function getContents({ limit, query, categorySlug }: ListOptions = 
 export async function getContentBySlug(slug: string): Promise<Content | null> {
   if (!supabase) {
     await demoDelay()
-    return mockContents.find((c) => c.slug === slug) ?? null
+    return getMergedDemoContents().find((c) => c.slug === slug) ?? null
   }
   const { data, error } = await supabase
     .from('contents')
@@ -181,6 +280,93 @@ export async function getContentBySlug(slug: string): Promise<Content | null> {
   fail(error)
   if (data) void supabase.rpc('increment_view', { p_table: 'contents', p_id: data.id })
   return data as unknown as Content | null
+}
+
+export type CreateContentInput = {
+  title: string
+  summary: string
+  body: string
+  type: ContentType
+  category_id: string | null
+  grade: string
+  file_url?: string | null
+  tags: string[]
+}
+
+export async function createContent(input: CreateContentInput, author: AuthorSummary): Promise<Content> {
+  const title = input.title.trim()
+  if (title.length < 3) throw new Error('Başlık en az 3 karakter olmalıdır.')
+  const baseSlug = slugify(title) || `ders-${Date.now()}`
+
+  if (!supabase) {
+    await demoDelay(200)
+    const existingAll = getMergedDemoContents()
+    let slug = baseSlug
+    let suffix = 2
+    while (existingAll.some((c) => c.slug === slug)) {
+      slug = `${baseSlug}-${suffix++}`
+    }
+    const now = new Date().toISOString()
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const created: Content = {
+      id: `ct-${crypto.randomUUID()}`,
+      author_id: author.id,
+      category_id: category?.id ?? null,
+      title,
+      slug,
+      summary: input.summary.trim() || null,
+      body: input.body.trim() || null,
+      type: input.type,
+      status: 'published',
+      grade: input.grade.trim() || null,
+      cover_url: null,
+      file_url: input.file_url?.trim() || null,
+      video_url: null,
+      tags: input.tags,
+      view_count: 1,
+      published_at: now,
+      created_at: now,
+      author,
+      category,
+    }
+    const existing = demoStore.get<Content[]>('contents_added', [])
+    demoStore.setStrict('contents_added', [created, ...existing])
+    return created
+  }
+
+  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+  const { data, error } = await supabase
+    .from('contents')
+    .insert({
+      author_id: author.id,
+      category_id: input.category_id,
+      title,
+      slug,
+      summary: input.summary.trim() || null,
+      body: input.body.trim() || null,
+      type: input.type,
+      status: 'published',
+      grade: input.grade.trim() || null,
+      file_url: input.file_url?.trim() || null,
+      tags: input.tags,
+    })
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .single()
+  fail(error)
+  return data as unknown as Content
+}
+
+export async function deleteContent(contentId: string): Promise<void> {
+  if (!supabase) {
+    await demoDelay(150)
+    const deleted = demoStore.get<string[]>('contents_deleted', [])
+    if (!deleted.includes(contentId)) {
+      demoStore.set('contents_deleted', [...deleted, contentId])
+    }
+    return
+  }
+  const { error } = await supabase.from('contents').delete().eq('id', contentId)
+  fail(error)
 }
 
 // ---------------------------------------------------------------
@@ -198,15 +384,7 @@ export async function getModuleResources(
   { grade, categorySlug, unit, query }: ResourceFilterOptions = {},
 ): Promise<{ items: ModuleResource[]; grades: string[]; units: string[] }> {
   await demoDelay(180)
-  const downloadOffsets = demoStore.get<Record<string, number>>('resource_downloads', {})
-
-  const base = mockModuleResources
-    .filter((r) => r.module === module)
-    .map((r) => ({
-      ...r,
-      download_count: r.download_count + (downloadOffsets[r.id] ?? 0),
-    }))
-    .sort((a, b) => b.published_at.localeCompare(a.published_at))
+  const base = getMergedDemoResources().filter((r) => r.module === module)
 
   const grades = Array.from(new Set(base.map((r) => r.grade)))
   const unitSource = base.filter(
@@ -227,11 +405,91 @@ export async function getModuleResources(
   return { items: filtered, grades, units }
 }
 
+export async function getAllModuleResources(module?: ResourceModuleKey): Promise<ModuleResource[]> {
+  await demoDelay(140)
+  const all = getMergedDemoResources()
+  return module ? all.filter((r) => r.module === module) : all
+}
+
+export type CreateModuleResourceInput = {
+  module: ResourceModuleKey
+  title: string
+  summary: string
+  grade: string
+  category_id: string | null
+  unit: string
+  format: DocumentFormat
+  file_size: string
+  page_count: number
+  file_url: string | null
+  preview_content?: string
+  tags: string[]
+}
+
+export async function createModuleResource(
+  input: CreateModuleResourceInput,
+  author: AuthorSummary | null,
+): Promise<ModuleResource> {
+  const title = input.title.trim()
+  if (title.length < 3) throw new Error('Doküman başlığı en az 3 karakter olmalıdır.')
+
+  await demoDelay(180)
+  const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+  const previewText = input.preview_content?.trim()
+  const previewSections: ResourcePreviewSection[] = previewText
+    ? [
+        {
+          heading: 'Doküman Özeti ve İçerik Notları',
+          content: previewText,
+        },
+      ]
+    : [
+        {
+          heading: `${input.unit.trim() || 'Genel'} — İçerik Özeti`,
+          content: input.summary.trim() || 'Yönetim panelinden eklenen güncel eğitim dokümanı.',
+        },
+      ]
+
+  const created: ModuleResource = {
+    id: `res-custom-${crypto.randomUUID()}`,
+    module: input.module,
+    title,
+    summary: input.summary.trim() || 'Yönetim panelinden eklenen güncel eğitim materyali.',
+    grade: input.grade.trim() || 'Genel',
+    category_id: category?.id ?? null,
+    category,
+    unit: input.unit.trim() || 'Genel',
+    format: input.format,
+    file_size: input.file_size.trim() || '1.0 MB',
+    page_count: Math.max(1, Math.round(input.page_count || 1)),
+    download_count: 1,
+    gradient: MODULE_GRADIENTS[input.module],
+    file_url: input.file_url?.trim() || null,
+    preview_sections: previewSections,
+    tags: input.tags,
+    author,
+    published_at: new Date().toISOString(),
+  }
+
+  const existing = demoStore.get<ModuleResource[]>('custom_resources', [])
+  demoStore.setStrict('custom_resources', [created, ...existing])
+  return created
+}
+
+export async function deleteModuleResource(resourceId: string): Promise<void> {
+  await demoDelay(140)
+  const deleted = demoStore.get<string[]>('deleted_resources', [])
+  if (!deleted.includes(resourceId)) {
+    demoStore.set('deleted_resources', [...deleted, resourceId])
+  }
+}
+
 export function recordResourceDownload(resourceId: string): number {
   const offsets = demoStore.get<Record<string, number>>('resource_downloads', {})
   offsets[resourceId] = (offsets[resourceId] ?? 0) + 1
   demoStore.set('resource_downloads', offsets)
-  const base = mockModuleResources.find((r) => r.id === resourceId)?.download_count ?? 0
+  const custom = demoStore.get<ModuleResource[]>('custom_resources', [])
+  const base = [...custom, ...mockModuleResources].find((r) => r.id === resourceId)?.download_count ?? 0
   return base + offsets[resourceId]!
 }
 
@@ -252,15 +510,7 @@ export async function getInteractiveActivities({
   query,
 }: ActivityFilterOptions = {}): Promise<{ items: InteractiveActivity[]; grades: string[] }> {
   await demoDelay(180)
-  const custom = demoStore.get<InteractiveActivity[]>('custom_activities', [])
-  const playOffsets = demoStore.get<Record<string, number>>('activity_plays', {})
-
-  const all = [...custom, ...mockActivities]
-    .map((a) => ({
-      ...a,
-      play_count: a.play_count + (playOffsets[a.id] ?? 0),
-    }))
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const all = getMergedDemoActivities()
 
   const grades = Array.from(new Set(all.map((a) => a.grade)))
 
@@ -295,6 +545,8 @@ export type CustomActivityInput = {
   category_id: string | null
   unit: string
   embed_url: string
+  duration_minutes?: number
+  tags?: string[]
 }
 
 export async function createCustomActivity(
@@ -313,20 +565,28 @@ export async function createCustomActivity(
     category_id: category?.id ?? null,
     category,
     unit: input.unit.trim() || 'Genel',
-    duration_minutes: 5,
+    duration_minutes: Math.max(1, Math.round(input.duration_minutes || 5)),
     play_count: 1,
     gradient:
       input.kind === 'game'
         ? 'from-fuchsia-600 via-purple-600 to-indigo-600'
         : 'from-cyan-600 via-blue-600 to-indigo-600',
     embed_url: input.embed_url,
-    tags: [input.provider, input.kind === 'game' ? 'oyun' : 'etkinlik'],
+    tags: input.tags?.length ? input.tags : [input.provider, input.kind === 'game' ? 'oyun' : 'etkinlik'],
     author,
     created_at: new Date().toISOString(),
   }
   const existing = demoStore.get<InteractiveActivity[]>('custom_activities', [])
-  demoStore.set('custom_activities', [created, ...existing])
+  demoStore.setStrict('custom_activities', [created, ...existing])
   return created
+}
+
+export async function deleteActivity(activityId: string): Promise<void> {
+  await demoDelay(140)
+  const deleted = demoStore.get<string[]>('deleted_activities', [])
+  if (!deleted.includes(activityId)) {
+    demoStore.set('deleted_activities', [...deleted, activityId])
+  }
 }
 
 // ---------------------------------------------------------------
@@ -564,10 +824,7 @@ export async function toggleForumLike(
 export async function getQuizzes({ limit, query, categorySlug }: ListOptions = {}): Promise<Quiz[]> {
   if (!supabase) {
     await demoDelay()
-    let list = mockQuizzes.map((q) => ({
-      ...q,
-      question_count: mockQuizQuestions[q.id]?.length ?? q.question_count ?? 0,
-    }))
+    let list = getMergedDemoQuizzes()
     if (categorySlug) list = list.filter((q) => q.category?.slug === categorySlug)
     if (query) list = list.filter((q) => matches([q.title, q.description, q.grade, q.category?.name], query))
     return limit ? list.slice(0, limit) : list
@@ -591,9 +848,9 @@ export async function getQuizzes({ limit, query, categorySlug }: ListOptions = {
 export async function getQuizWithQuestions(idOrSlug: string): Promise<{ quiz: Quiz; questions: QuizQuestion[] } | null> {
   if (!supabase) {
     await demoDelay(200)
-    const quiz = mockQuizzes.find((q) => q.id === idOrSlug || q.slug === idOrSlug)
+    const quiz = getMergedDemoQuizzes().find((q) => q.id === idOrSlug || q.slug === idOrSlug)
     if (!quiz) return null
-    const questions = mockQuizQuestions[quiz.id] ?? []
+    const questions = getMergedDemoQuizQuestions(quiz.id)
     return {
       quiz: { ...quiz, question_count: questions.length },
       questions,
@@ -629,6 +886,147 @@ export async function getQuizWithQuestions(idOrSlug: string): Promise<{ quiz: Qu
     quiz: { ...(quiz as unknown as Quiz), question_count: normalizedQuestions.length },
     questions: normalizedQuestions,
   }
+}
+
+export type CreateQuizQuestionInput = {
+  question: string
+  options: string[]
+  correct_option: number
+  explanation?: string
+}
+
+export type CreateQuizInput = {
+  title: string
+  description: string
+  category_id: string | null
+  grade: string
+  difficulty: Difficulty
+  time_limit_minutes: number
+  questions: CreateQuizQuestionInput[]
+}
+
+export async function createQuiz(input: CreateQuizInput, author: AuthorSummary): Promise<Quiz> {
+  const title = input.title.trim()
+  if (title.length < 3) throw new Error('Test başlığı en az 3 karakter olmalıdır.')
+  if (!input.questions.length) throw new Error('En az 1 çoktan seçmeli soru eklemelisiniz.')
+
+  const cleanedQuestions = input.questions.map((q, idx) => {
+    const text = q.question.trim()
+    const opts = q.options.map((o) => o.trim()).filter(Boolean)
+    if (text.length < 3) throw new Error(`${idx + 1}. soru metni en az 3 karakter olmalıdır.`)
+    if (opts.length < 2) throw new Error(`${idx + 1}. soru için en az 2 cevap şıkkı girmelisiniz.`)
+    if (q.correct_option < 0 || q.correct_option >= opts.length) {
+      throw new Error(`${idx + 1}. soru için geçerli bir doğru cevap seçmelisiniz.`)
+    }
+    return {
+      question: text,
+      options: opts,
+      correct_option: q.correct_option,
+      explanation: q.explanation?.trim() || null,
+      sort_order: idx + 1,
+    }
+  })
+
+  const baseSlug = slugify(title) || `test-${Date.now()}`
+
+  if (!supabase) {
+    await demoDelay(220)
+    const existingAll = getMergedDemoQuizzes()
+    let slug = baseSlug
+    let suffix = 2
+    while (existingAll.some((q) => q.slug === slug)) {
+      slug = `${baseSlug}-${suffix++}`
+    }
+    const quizId = `qz-custom-${crypto.randomUUID()}`
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const created: Quiz = {
+      id: quizId,
+      author_id: author.id,
+      category_id: category?.id ?? null,
+      title,
+      slug,
+      description: input.description.trim() || `${cleanedQuestions.length} soruluk çoktan seçmeli online test.`,
+      grade: input.grade.trim() || 'Genel',
+      difficulty: input.difficulty,
+      time_limit_minutes: Math.max(1, Math.min(300, Math.round(input.time_limit_minutes || 10))),
+      is_published: true,
+      created_at: new Date().toISOString(),
+      question_count: cleanedQuestions.length,
+      author,
+      category,
+    }
+
+    const questionRows: QuizQuestion[] = cleanedQuestions.map((q, idx) => ({
+      id: `${quizId}-q${idx + 1}`,
+      quiz_id: quizId,
+      question: q.question,
+      image_url: null,
+      options: q.options,
+      sort_order: q.sort_order,
+      correct_option: q.correct_option,
+      explanation: q.explanation,
+    }))
+
+    const existingQuizzes = demoStore.get<Quiz[]>('custom_quizzes', [])
+    const existingMap = demoStore.get<Record<string, QuizQuestion[]>>('custom_quiz_questions', {})
+    demoStore.setStrict('custom_quizzes', [created, ...existingQuizzes])
+    demoStore.setStrict('custom_quiz_questions', { ...existingMap, [quizId]: questionRows })
+    return created
+  }
+
+  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+  const { data: quizData, error: qErr } = await supabase
+    .from('quizzes')
+    .insert({
+      author_id: author.id,
+      category_id: input.category_id,
+      title,
+      slug,
+      description: input.description.trim() || null,
+      grade: input.grade.trim() || null,
+      difficulty: input.difficulty,
+      time_limit_minutes: Math.max(1, Math.min(300, Math.round(input.time_limit_minutes || 10))),
+      is_published: true,
+    })
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .single()
+  fail(qErr)
+
+  const quizRow = quizData as unknown as Quiz
+  for (const item of cleanedQuestions) {
+    const { data: qRow, error: insQErr } = await supabase
+      .from('quiz_questions')
+      .insert({
+        quiz_id: quizRow.id,
+        question: item.question,
+        options: item.options,
+        sort_order: item.sort_order,
+      })
+      .select('id')
+      .single()
+    fail(insQErr)
+    const { error: keyErr } = await supabase.from('quiz_answer_keys').insert({
+      question_id: qRow!.id,
+      correct_option: item.correct_option,
+      explanation: item.explanation,
+    })
+    fail(keyErr)
+  }
+
+  return { ...quizRow, question_count: cleanedQuestions.length }
+}
+
+export async function deleteQuiz(quizId: string): Promise<void> {
+  if (!supabase) {
+    await demoDelay(140)
+    const deleted = demoStore.get<string[]>('deleted_quizzes', [])
+    if (!deleted.includes(quizId)) {
+      demoStore.set('deleted_quizzes', [...deleted, quizId])
+    }
+    return
+  }
+  const { error } = await supabase.from('quizzes').delete().eq('id', quizId)
+  fail(error)
 }
 
 export async function submitQuiz(
@@ -711,14 +1109,36 @@ export async function submitQuiz(
 }
 
 // ---------------------------------------------------------------
-// Kitaplar
+// Kitaplar (Mağaza, Detay & Yönetim)
 // ---------------------------------------------------------------
+function normalizeBookRow(row: Partial<Book> & { id: string; title: string }): Book {
+  return {
+    ...row,
+    slug: row.slug || slugify(row.title) || row.id,
+    added_by: row.added_by ?? null,
+    category_id: row.category_id ?? null,
+    author: row.author ?? null,
+    publisher: row.publisher ?? null,
+    isbn: row.isbn ?? null,
+    description: row.description ?? null,
+    grade: row.grade ?? null,
+    cover_url: row.cover_url ?? null,
+    file_url: row.file_url ?? null,
+    external_url: row.external_url ?? null,
+    page_count: row.page_count ?? null,
+    published_year: row.published_year ?? null,
+    is_published: row.is_published ?? true,
+    created_at: row.created_at ?? new Date().toISOString(),
+    payment_provider: row.payment_provider ?? (row.external_url ? detectPaymentProvider(row.external_url).key : null),
+  } as Book
+}
+
 export async function getBooks({ limit, query, categorySlug }: ListOptions = {}): Promise<Book[]> {
   if (!supabase) {
     await demoDelay()
-    let list = [...mockBooks]
+    let list = getMergedDemoBooks().filter((b) => b.is_published)
     if (categorySlug) list = list.filter((b) => b.category?.slug === categorySlug)
-    if (query) list = list.filter((b) => matches([b.title, b.author, b.description, b.category?.name], query))
+    if (query) list = list.filter((b) => matches([b.title, b.author, b.description, b.publisher, b.grade, b.category?.name], query))
     return limit ? list.slice(0, limit) : list
   }
   let q = supabase
@@ -731,7 +1151,195 @@ export async function getBooks({ limit, query, categorySlug }: ListOptions = {})
   if (limit) q = q.limit(limit)
   const { data, error } = await q
   fail(error)
-  return (data ?? []) as unknown as Book[]
+  return ((data ?? []) as unknown as Array<Partial<Book> & { id: string; title: string }>).map(normalizeBookRow)
+}
+
+export async function getBookBySlug(slugOrId: string): Promise<Book | null> {
+  if (!supabase) {
+    await demoDelay(160)
+    return getMergedDemoBooks().find((b) => b.slug === slugOrId || b.id === slugOrId) ?? null
+  }
+  const all = await getBooks()
+  return all.find((b) => b.slug === slugOrId || b.id === slugOrId) ?? null
+}
+
+export type BookInput = {
+  title: string
+  category_id: string | null
+  author: string
+  author_title?: string
+  author_bio?: string
+  publisher: string
+  isbn?: string
+  description: string
+  grade: string
+  price: number | null
+  cover_url: string | null
+  file_url: string | null
+  external_url: string | null
+  page_count: number | null
+  published_year: number | null
+  highlights?: string[]
+  sample_pages?: BookSamplePage[]
+}
+
+export async function createBook(input: BookInput, addedBy: string | null): Promise<Book> {
+  const title = input.title.trim()
+  if (title.length < 2) throw new Error('Kitap başlığı en az 2 karakter olmalıdır.')
+
+  const baseSlug = slugify(title) || `kitap-${Date.now()}`
+  const extUrl = input.external_url?.trim() || null
+  const provider = extUrl ? detectPaymentProvider(extUrl).key : null
+
+  if (!supabase) {
+    await demoDelay(200)
+    const existingAll = getMergedDemoBooks()
+    let slug = baseSlug
+    let suffix = 2
+    while (existingAll.some((b) => b.slug === slug)) {
+      slug = `${baseSlug}-${suffix++}`
+    }
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const cleanHighlights = (input.highlights ?? []).map((h) => h.trim()).filter(Boolean)
+    const created: Book = {
+      id: `bk-custom-${crypto.randomUUID()}`,
+      slug,
+      added_by: addedBy,
+      category_id: category?.id ?? null,
+      title,
+      author: input.author.trim() || null,
+      author_title: input.author_title?.trim() || null,
+      author_bio: input.author_bio?.trim() || null,
+      publisher: input.publisher.trim() || 'Bi Ders! Yayınları',
+      isbn: input.isbn?.trim() || null,
+      description: input.description.trim() || null,
+      grade: input.grade.trim() || null,
+      price: input.price != null && input.price > 0 ? input.price : 0,
+      cover_url: input.cover_url?.trim() || null,
+      file_url: input.file_url?.trim() || null,
+      external_url: extUrl,
+      payment_provider: provider,
+      page_count: input.page_count && input.page_count > 0 ? Math.round(input.page_count) : null,
+      published_year: input.published_year && input.published_year >= 1800 ? Math.round(input.published_year) : new Date().getFullYear(),
+      highlights: cleanHighlights.length ? cleanHighlights : undefined,
+      sample_pages: input.sample_pages?.length ? input.sample_pages : undefined,
+      is_published: true,
+      created_at: new Date().toISOString(),
+      category,
+    }
+    const added = demoStore.get<Book[]>('books_added', [])
+    demoStore.setStrict('books_added', [created, ...added])
+    return created
+  }
+
+  const { data, error } = await supabase
+    .from('books')
+    .insert({
+      added_by: addedBy,
+      category_id: input.category_id,
+      title,
+      author: input.author.trim() || null,
+      publisher: input.publisher.trim() || null,
+      isbn: input.isbn?.trim() || null,
+      description: input.description.trim() || null,
+      grade: input.grade.trim() || null,
+      cover_url: input.cover_url?.trim() || null,
+      file_url: input.file_url?.trim() || null,
+      external_url: extUrl,
+      page_count: input.page_count && input.page_count > 0 ? Math.round(input.page_count) : null,
+      published_year: input.published_year && input.published_year >= 1800 ? Math.round(input.published_year) : null,
+      is_published: true,
+    })
+    .select(`*, ${CATEGORY}`)
+    .single()
+  fail(error)
+  return normalizeBookRow(data as unknown as Partial<Book> & { id: string; title: string })
+}
+
+export async function updateBook(bookId: string, input: BookInput): Promise<Book> {
+  const title = input.title.trim()
+  if (title.length < 2) throw new Error('Kitap başlığı en az 2 karakter olmalıdır.')
+
+  const extUrl = input.external_url?.trim() || null
+  const provider = extUrl ? detectPaymentProvider(extUrl).key : null
+
+  if (!supabase) {
+    await demoDelay(180)
+    const current = getMergedDemoBooks().find((b) => b.id === bookId)
+    if (!current) throw new Error('Güncellenecek kitap bulunamadı.')
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const cleanHighlights = (input.highlights ?? []).map((h) => h.trim()).filter(Boolean)
+
+    const patch: Partial<Book> = {
+      title,
+      category_id: category?.id ?? null,
+      category,
+      author: input.author.trim() || null,
+      author_title: input.author_title?.trim() || null,
+      author_bio: input.author_bio?.trim() || null,
+      publisher: input.publisher.trim() || null,
+      isbn: input.isbn?.trim() || null,
+      description: input.description.trim() || null,
+      grade: input.grade.trim() || null,
+      price: input.price != null && input.price > 0 ? input.price : 0,
+      cover_url: input.cover_url?.trim() || null,
+      file_url: input.file_url?.trim() || null,
+      external_url: extUrl,
+      payment_provider: provider,
+      page_count: input.page_count && input.page_count > 0 ? Math.round(input.page_count) : null,
+      published_year: input.published_year && input.published_year >= 1800 ? Math.round(input.published_year) : null,
+      highlights: cleanHighlights.length ? cleanHighlights : undefined,
+    }
+
+    const added = demoStore.get<Book[]>('books_added', [])
+    const addedIdx = added.findIndex((b) => b.id === bookId)
+    if (addedIdx >= 0) {
+      const updatedBook: Book = { ...added[addedIdx]!, ...patch }
+      added[addedIdx] = updatedBook
+      demoStore.setStrict('books_added', added)
+      return updatedBook
+    }
+
+    const patches = demoStore.get<Record<string, Partial<Book>>>('books_patches', {})
+    patches[bookId] = { ...patches[bookId], ...patch }
+    demoStore.setStrict('books_patches', patches)
+    return { ...current, ...patch }
+  }
+
+  const { data, error } = await supabase
+    .from('books')
+    .update({
+      category_id: input.category_id,
+      title,
+      author: input.author.trim() || null,
+      publisher: input.publisher.trim() || null,
+      isbn: input.isbn?.trim() || null,
+      description: input.description.trim() || null,
+      grade: input.grade.trim() || null,
+      cover_url: input.cover_url?.trim() || null,
+      file_url: input.file_url?.trim() || null,
+      external_url: extUrl,
+      page_count: input.page_count && input.page_count > 0 ? Math.round(input.page_count) : null,
+      published_year: input.published_year && input.published_year >= 1800 ? Math.round(input.published_year) : null,
+    })
+    .eq('id', bookId)
+    .select(`*, ${CATEGORY}`)
+    .single()
+  fail(error)
+  return normalizeBookRow(data as unknown as Partial<Book> & { id: string; title: string })
+}
+
+export async function deleteBook(bookId: string): Promise<void> {
+  if (!supabase) {
+    await demoDelay(140)
+    const deleted = demoStore.get<string[]>('books_deleted', [])
+    if (!deleted.includes(bookId)) {
+      demoStore.set('books_deleted', [...deleted, bookId])
+    }
+    return
+  }
+  const { error } = await supabase.from('books').delete().eq('id', bookId)
+  fail(error)
 }
 
 // ---------------------------------------------------------------
@@ -801,15 +1409,15 @@ export function getDemoProfilePatch(userId: string): ProfilePatch {
 function resolveFavoriteDemo(type: FavoriteItemType, id: string): Pick<FavoriteResolved, 'title' | 'href' | 'subtitle'> | null {
   switch (type) {
     case 'content': {
-      const c = mockContents.find((x) => x.id === id)
+      const c = getMergedDemoContents().find((x) => x.id === id)
       return c ? { title: c.title, href: `/dersler/${c.slug}`, subtitle: c.category?.name } : null
     }
     case 'book': {
-      const b = mockBooks.find((x) => x.id === id)
-      return b ? { title: b.title, href: `/kitaplar?ara=${encodeURIComponent(b.title)}`, subtitle: b.author ?? undefined } : null
+      const b = getMergedDemoBooks().find((x) => x.id === id)
+      return b ? { title: b.title, href: `/kitaplar/${b.slug}`, subtitle: b.author ?? undefined } : null
     }
     case 'quiz': {
-      const q = mockQuizzes.find((x) => x.id === id)
+      const q = getMergedDemoQuizzes().find((x) => x.id === id)
       return q ? { title: q.title, href: `/testler/${q.id}`, subtitle: q.category?.name } : null
     }
     case 'forum_topic': {
@@ -845,7 +1453,9 @@ export async function getFavorites(userId: string): Promise<FavoriteResolved[]> 
   type Row = { id: string; title: string; slug?: string; author?: string }
   const lookup = new Map<string, Pick<FavoriteResolved, 'title' | 'href' | 'subtitle'>>()
   ;((c.data ?? []) as Row[]).forEach((r) => lookup.set(`content:${r.id}`, { title: r.title, href: `/dersler/${r.slug}`, subtitle: 'Ders' }))
-  ;((b.data ?? []) as Row[]).forEach((r) => lookup.set(`book:${r.id}`, { title: r.title, href: `/kitaplar?ara=${encodeURIComponent(r.title)}`, subtitle: r.author }))
+  ;((b.data ?? []) as Row[]).forEach((r) =>
+    lookup.set(`book:${r.id}`, { title: r.title, href: `/kitaplar/${r.slug ?? (slugify(r.title) || r.id)}`, subtitle: r.author }),
+  )
   ;((q.data ?? []) as Row[]).forEach((r) => lookup.set(`quiz:${r.id}`, { title: r.title, href: `/testler/${r.id}`, subtitle: 'Test' }))
   ;((t.data ?? []) as Row[]).forEach((r) => lookup.set(`forum_topic:${r.id}`, { title: r.title, href: `/forum/${r.id}`, subtitle: 'Forum' }))
   return favs.flatMap((f) => {
@@ -917,10 +1527,11 @@ export async function getAdminStats(): Promise<AdminStats> {
     const msgs = [...demoStore.get<ContactMessage[]>('messages', []), ...mockContactMessages]
     return {
       users: mockProfiles.length,
-      contents: mockContents.length + mockModuleResources.length,
+      contents: getMergedDemoContents().length + getMergedDemoResources().length,
       topics: getMergedDemoTopics().length,
-      quizzes: mockQuizzes.length,
-      books: mockBooks.length,
+      quizzes: getMergedDemoQuizzes().length,
+      activities: getMergedDemoActivities().length,
+      books: getMergedDemoBooks().length,
       newMessages: msgs.filter((m) => m.status === 'new').length,
     }
   }
@@ -938,7 +1549,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     count('books'),
     count('contact_messages', ['status', 'new']),
   ])
-  return { users, contents, topics, quizzes, books, newMessages }
+  return { users, contents, topics, quizzes, activities: getMergedDemoActivities().length, books, newMessages }
 }
 
 export async function getContactMessages(): Promise<ContactMessage[]> {
@@ -977,7 +1588,8 @@ export async function setUserRole(userId: string, role: Role): Promise<void> {
 export async function getManagedContents(authorId: string, isAdmin: boolean): Promise<Content[]> {
   if (!supabase) {
     await demoDelay()
-    return isAdmin ? mockContents : mockContents.filter((c) => c.author_id === authorId)
+    const all = getMergedDemoContents()
+    return isAdmin ? all : all.filter((c) => c.author_id === authorId)
   }
   let q = supabase.from('contents').select(`*, ${AUTHOR}, ${CATEGORY}`).order('created_at', { ascending: false }).limit(50)
   if (!isAdmin) q = q.eq('author_id', authorId)

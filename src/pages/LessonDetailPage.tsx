@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Bookmark, BookmarkCheck, BookOpen, Calendar, Eye } from 'lucide-react'
+import { ArrowLeft, Bookmark, BookmarkCheck, BookOpen, Calendar, Download, ExternalLink, Eye } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAsync, usePageMeta } from '../hooks'
 import { getContentBySlug, isFavorite, toggleFavorite } from '../services/api'
@@ -118,6 +118,33 @@ export function LessonDetailPage() {
       <div className="prose-biders mt-8">
         <SimpleMarkdown text={content.body ?? ''} />
       </div>
+
+      {content.file_url && (
+        <div className="card mt-8 flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <p className="eyebrow">Ekli Ders Dosyası</p>
+            <p className="mt-1 text-sm font-semibold text-ink">Bu ders notuna ait dokümanı indir veya yeni sekmede aç.</p>
+          </div>
+          {content.file_url.startsWith('data:') ? (
+            <a
+              href={content.file_url}
+              download={`${content.slug}.pdf`}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink bg-sun px-4 text-sm font-semibold text-ink shadow-[0_2px_0_0_var(--color-ink)] hover:brightness-95"
+            >
+              <Download className="size-4" aria-hidden /> Dosyayı İndir
+            </a>
+          ) : (
+            <a
+              href={content.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink bg-sun px-4 text-sm font-semibold text-ink shadow-[0_2px_0_0_var(--color-ink)] hover:brightness-95"
+            >
+              <ExternalLink className="size-4" aria-hidden /> Dosyayı Aç
+            </a>
+          )}
+        </div>
+      )}
 
       {content.tags.length > 0 && (
         <footer className="mt-10 flex flex-wrap items-center gap-2 border-t border-line pt-6">
