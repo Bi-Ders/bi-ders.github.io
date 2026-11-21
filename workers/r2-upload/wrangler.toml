@@ -1,7 +1,22 @@
 name = "biders-r2-upload"
 main = "src/index.ts"
-compatibility_date = "2025-11-01"
+compatibility_date = "2026-11-21"
 workers_dev = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+persist = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1
 
 [vars]
 PUBLIC_CDN_URL = "https://cdn.biders.org"
@@ -11,10 +26,10 @@ MAX_BUCKET_SIZE_BYTES = "8000000000"
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "biders-media"
+jurisdiction = "eu"
 preview_bucket_name = "biders-media-preview"
 
-# Özel alan adı (Cloudflare DNS üzerinde biders.org zone'u bağlıysa etkinleştirin):
-# routes = [{ pattern = "upload.biders.org", custom_domain = true }]
+routes = [{ pattern = "upload.biders.org", custom_domain = true }]
 
 # Gizli ortam değişkenlerini (secrets) Wrangler ile tanımlayın:
 #   npx wrangler secret put SUPABASE_URL

@@ -1,20 +1,21 @@
 -- =====================================================================
 --  Bi Ders! — Supabase veritabanı şeması
---  PostgreSQL 15+ / Supabase
+--  PostgreSQL 15+ / Supabase (Postgres best practices uyumlu)
 --
 --  Kullanım: Supabase Dashboard > SQL Editor > bu dosyanın tamamını
 --  yapıştırıp çalıştırın. Betik tekrar çalıştırılabilir (idempotent)
 --  olacak şekilde yazılmıştır.
 --
 --  İçerik:
---    1. Uzantılar
---    2. Yardımcı fonksiyonlar (rol kontrolleri, updated_at)
---    3. Tablolar ve ilişkiler
---    4. Tetikleyiciler (yeni kullanıcı profili, sayaçlar, yetki korumaları)
---    5. RPC fonksiyonları (test gönderme / puanlama)
---    6. Row Level Security (RLS) politikaları
---    7. Storage bucket'ları (DEVRE DIŞI / OPSİYONEL — Cloudflare R2 kullanılır)
---    8. Başlangıç verileri (kategoriler)
+--    1. Uzantılar ve özel (Data API'ye kapalı) `private` şeması
+--    2. Enum tipleri
+--    3. Tablolar ve ilişkiler (tüm FK + RLS + kısmi indeksler)
+--    4. Yardımcı fonksiyonlar (`private` şemasında, search_path sabit)
+--    5. Tetikleyiciler (yeni kullanıcı profili, sayaçlar, yetki korumaları)
+--    6. RPC fonksiyonları (test gönderme / puanlama, görüntülenme sayacı)
+--    7. Row Level Security (RLS) politikaları (initPlan sarmalı, çakışmasız)
+--    8. Storage bucket'ları (DEVRE DIŞI / OPSİYONEL — Cloudflare R2 kullanılır)
+--    9. Başlangıç verileri (kategoriler)
 --
 --  İlk admin kullanıcısını atamak için (SQL Editor'de, service role ile):
 --    update public.profiles set role = 'admin'
@@ -23,10 +24,14 @@
 
 
 -- ---------------------------------------------------------------------
--- 1. UZANTILAR
+-- 1. UZANTILAR VE ÖZEL ŞEMA
 -- ---------------------------------------------------------------------
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists pg_trgm  with schema extensions;
+
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated, anon;
 
 
 -- ---------------------------------------------------------------------
@@ -63,7 +68,7 @@ exception when duplicate_object then null; end $$;
 
 
 -- ---------------------------------------------------------------------
--- 3. TABLOLAR
+-- 3. TABLOLAR VE İNDEKSLER
 -- ---------------------------------------------------------------------
 
 -- 3.1 PROFILES — auth.users ile birebir ilişkili kullanıcı profili
@@ -145,6 +150,7 @@ create table if not exists public.forum_topics (
 );
 create index if not exists forum_topics_activity_idx on public.forum_topics (is_pinned desc, last_activity_at desc);
 create index if not exists forum_topics_category_idx on public.forum_topics (category_id);
+create index if not exists forum_topics_author_idx   on public.forum_topics (author_id);
 create index if not exists forum_topics_title_trgm   on public.forum_topics using gin (title extensions.gin_trgm_ops);
 
 -- 3.5 FORUM_REPLIES — forum cevapları
@@ -158,7 +164,9 @@ create table if not exists public.forum_replies (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
-create index if not exists forum_replies_topic_idx on public.forum_replies (topic_id, created_at);
+create index if not exists forum_replies_topic_idx          on public.forum_replies (topic_id, created_at);
+create index if not exists forum_replies_author_idx         on public.forum_replies (author_id);
+create index if not exists forum_replies_topic_accepted_idx on public.forum_replies (topic_id) where is_accepted;
 
 -- 3.6 QUIZZES — testler
 create table if not exists public.quizzes (
@@ -175,7 +183,9 @@ create table if not exists public.quizzes (
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
-create index if not exists quizzes_category_idx on public.quizzes (category_id);
+create index if not exists quizzes_category_idx          on public.quizzes (category_id);
+create index if not exists quizzes_author_idx            on public.quizzes (author_id);
+create index if not exists quizzes_published_created_idx on public.quizzes (created_at desc) where is_published;
 
 -- 3.7 QUIZ_QUESTIONS — soru metni ve şıklar (doğru cevap BURADA DEĞİL)
 create table if not exists public.quiz_questions (
@@ -231,8 +241,10 @@ create table if not exists public.books (
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
-create index if not exists books_category_idx on public.books (category_id);
-create index if not exists books_title_trgm   on public.books using gin (title extensions.gin_trgm_ops);
+create index if not exists books_category_idx          on public.books (category_id);
+create index if not exists books_added_by_idx          on public.books (added_by);
+create index if not exists books_published_created_idx on public.books (created_at desc) where is_published;
+create index if not exists books_title_trgm            on public.books using gin (title extensions.gin_trgm_ops);
 
 -- 3.11 FAVORITES — kullanıcı favorileri (çok biçimli: içerik, kitap, test, konu)
 create table if not exists public.favorites (
@@ -257,6 +269,7 @@ create table if not exists public.contact_messages (
   created_at timestamptz not null default now()
 );
 create index if not exists contact_messages_status_idx on public.contact_messages (status, created_at desc);
+create index if not exists contact_messages_user_idx   on public.contact_messages (user_id);
 
 -- 3.13 REPORTS — uygunsuz içerik şikâyetleri (moderasyon)
 create table if not exists public.reports (
@@ -270,57 +283,59 @@ create table if not exists public.reports (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
-create index if not exists reports_status_idx on public.reports (status, created_at desc);
+create index if not exists reports_status_idx      on public.reports (status, created_at desc);
+create index if not exists reports_reporter_idx    on public.reports (reporter_id);
+create index if not exists reports_resolved_by_idx on public.reports (resolved_by);
 
 
 -- ---------------------------------------------------------------------
--- 4. YARDIMCI FONKSİYONLAR
+-- 4. YARDIMCI FONKSİYONLAR (private şemada — Data API'ye açık değil)
 --    SECURITY DEFINER: RLS politikaları içinde profiles tablosunu
 --    sorgularken sonsuz özyinelemeyi engeller. search_path sabitlenir.
 -- ---------------------------------------------------------------------
-create or replace function public.current_user_role()
+create or replace function private.current_user_role()
 returns public.user_role
 language sql
 stable
 security definer
 set search_path = ''
 as $$
-  select role from public.profiles where id = auth.uid();
+  select role from public.profiles where id = (select auth.uid());
 $$;
 
-create or replace function public.is_admin()
+create or replace function private.is_admin()
 returns boolean
 language sql
 stable
 security definer
 set search_path = ''
 as $$
-  select coalesce((select role = 'admin' from public.profiles where id = auth.uid()), false);
+  select coalesce((select role = 'admin' from public.profiles where id = (select auth.uid())), false);
 $$;
 
 -- Öğretmen veya admin
-create or replace function public.is_staff()
+create or replace function private.is_staff()
 returns boolean
 language sql
 stable
 security definer
 set search_path = ''
 as $$
-  select coalesce((select role in ('teacher', 'admin') from public.profiles where id = auth.uid()), false);
+  select coalesce((select role in ('teacher', 'admin') from public.profiles where id = (select auth.uid())), false);
 $$;
 
 -- Sunucu tarafı (service_role / SQL Editor) bağlamı mı?
-create or replace function public.is_service_context()
+create or replace function private.is_service_context()
 returns boolean
 language sql
 stable
 set search_path = ''
 as $$
-  select coalesce(auth.role(), '') = 'service_role'
-      or current_user in ('postgres', 'supabase_admin');
+  select coalesce((select auth.jwt() ->> 'role'), '') = 'service_role'
+      or current_user in ('postgres', 'supabase_admin', 'service_role');
 $$;
 
-create or replace function public.set_updated_at()
+create or replace function private.set_updated_at()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -331,6 +346,18 @@ begin
 end;
 $$;
 
+revoke all on function private.current_user_role() from public;
+grant execute on function private.current_user_role() to authenticated, anon;
+
+revoke all on function private.is_admin() from public;
+grant execute on function private.is_admin() to authenticated, anon;
+
+revoke all on function private.is_staff() from public;
+grant execute on function private.is_staff() to authenticated, anon;
+
+revoke all on function private.is_service_context() from public;
+grant execute on function private.is_service_context() to authenticated, anon;
+
 
 -- ---------------------------------------------------------------------
 -- 5. TETİKLEYİCİLER
@@ -338,7 +365,7 @@ $$;
 
 -- 5.1 Yeni kullanıcı kaydında otomatik profil oluşturma.
 --     ROL ASLA kullanıcı meta verisinden alınmaz; her zaman 'student'.
-create or replace function public.handle_new_user()
+create or replace function private.handle_new_user()
 returns trigger
 language plpgsql
 security definer
@@ -357,14 +384,16 @@ begin
 end;
 $$;
 
+revoke all on function private.handle_new_user() from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute function public.handle_new_user();
+  for each row execute function private.handle_new_user();
 
 -- 5.2 Rol yükseltme koruması: yalnızca admin (veya service_role) rol değiştirebilir.
 -- Bilinçli olarak SECURITY INVOKER: current_user çağıran rolü (authenticated) göstermeli.
-create or replace function public.protect_profile_role()
+create or replace function private.protect_profile_role()
 returns trigger
 language plpgsql
 security invoker
@@ -372,12 +401,12 @@ set search_path = ''
 as $$
 begin
   if tg_op = 'INSERT' then
-    if new.role <> 'student' and not public.is_admin() and not public.is_service_context() then
+    if new.role <> 'student' and not private.is_admin() and not private.is_service_context() then
       new.role := 'student';
     end if;
   elsif new.role is distinct from old.role
-        and not public.is_admin()
-        and not public.is_service_context() then
+        and not private.is_admin()
+        and not private.is_service_context() then
     raise exception 'Rol değiştirme yetkiniz yok.' using errcode = '42501';
   end if;
   return new;
@@ -387,18 +416,18 @@ $$;
 drop trigger if exists profiles_protect_role on public.profiles;
 create trigger profiles_protect_role
   before insert or update on public.profiles
-  for each row execute function public.protect_profile_role();
+  for each row execute function private.protect_profile_role();
 
 -- 5.3 Forum moderasyon alanlarını koruma (pin/kilit/gizle yalnızca personel)
 -- Bilinçli olarak SECURITY INVOKER: current_user çağıran rolü (authenticated) göstermeli.
-create or replace function public.protect_forum_topic_fields()
+create or replace function private.protect_forum_topic_fields()
 returns trigger
 language plpgsql
 security invoker
 set search_path = ''
 as $$
 begin
-  if public.is_staff() or public.is_service_context() then
+  if private.is_staff() or private.is_service_context() then
     return new;
   end if;
 
@@ -426,11 +455,11 @@ $$;
 drop trigger if exists forum_topics_protect on public.forum_topics;
 create trigger forum_topics_protect
   before insert or update on public.forum_topics
-  for each row execute function public.protect_forum_topic_fields();
+  for each row execute function private.protect_forum_topic_fields();
 
 -- 5.4 Forum cevabı alan koruması: is_accepted yalnızca konu sahibi / personel
 -- Bilinçli olarak SECURITY INVOKER: current_user çağıran rolü (authenticated) göstermeli.
-create or replace function public.protect_forum_reply_fields()
+create or replace function private.protect_forum_reply_fields()
 returns trigger
 language plpgsql
 security invoker
@@ -439,7 +468,7 @@ as $$
 declare
   topic_owner uuid;
 begin
-  if public.is_staff() or public.is_service_context() then
+  if private.is_staff() or private.is_service_context() then
     return new;
   end if;
 
@@ -454,10 +483,10 @@ begin
        or new.topic_id  is distinct from old.topic_id then
       raise exception 'Bu alanları değiştirme yetkiniz yok.' using errcode = '42501';
     end if;
-    if new.body is distinct from old.body and old.author_id is distinct from auth.uid() then
+    if new.body is distinct from old.body and old.author_id is distinct from (select auth.uid()) then
       raise exception 'Yalnızca cevabın sahibi metni düzenleyebilir.' using errcode = '42501';
     end if;
-    if new.is_accepted is distinct from old.is_accepted and topic_owner is distinct from auth.uid() then
+    if new.is_accepted is distinct from old.is_accepted and topic_owner is distinct from (select auth.uid()) then
       raise exception 'Yalnızca konu sahibi cevabı kabul edebilir.' using errcode = '42501';
     end if;
   end if;
@@ -468,10 +497,10 @@ $$;
 drop trigger if exists forum_replies_protect on public.forum_replies;
 create trigger forum_replies_protect
   before insert or update on public.forum_replies
-  for each row execute function public.protect_forum_reply_fields();
+  for each row execute function private.protect_forum_reply_fields();
 
 -- 5.5 Forum sayaçları (cevap sayısı, son etkinlik)
-create or replace function public.update_topic_reply_stats()
+create or replace function private.update_topic_reply_stats()
 returns trigger
 language plpgsql
 security definer
@@ -492,13 +521,15 @@ begin
 end;
 $$;
 
+revoke all on function private.update_topic_reply_stats() from public, anon, authenticated;
+
 drop trigger if exists forum_replies_stats on public.forum_replies;
 create trigger forum_replies_stats
   after insert or delete on public.forum_replies
-  for each row execute function public.update_topic_reply_stats();
+  for each row execute function private.update_topic_reply_stats();
 
 -- 5.6 Cevap kabul edilince veya silinince konunun "çözüldü" durumunu eşitle
-create or replace function public.sync_topic_solved()
+create or replace function private.sync_topic_solved()
 returns trigger
 language plpgsql
 security definer
@@ -517,13 +548,15 @@ begin
 end;
 $$;
 
+revoke all on function private.sync_topic_solved() from public, anon, authenticated;
+
 drop trigger if exists forum_replies_solved on public.forum_replies;
 create trigger forum_replies_solved
   after update of is_accepted or delete on public.forum_replies
-  for each row execute function public.sync_topic_solved();
+  for each row execute function private.sync_topic_solved();
 
 -- 5.7 İçerik yayınlanınca published_at doldur
-create or replace function public.set_published_at()
+create or replace function private.set_published_at()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -539,7 +572,7 @@ $$;
 drop trigger if exists contents_published_at on public.contents;
 create trigger contents_published_at
   before insert or update on public.contents
-  for each row execute function public.set_published_at();
+  for each row execute function private.set_published_at();
 
 -- 5.8 updated_at tetikleyicileri
 do $$
@@ -549,7 +582,7 @@ begin
   foreach t in array array['profiles', 'contents', 'forum_topics', 'forum_replies', 'quizzes', 'books', 'reports']
   loop
     execute format('drop trigger if exists %I_updated_at on public.%I', t, t);
-    execute format('create trigger %I_updated_at before update on public.%I for each row execute function public.set_updated_at()', t, t);
+    execute format('create trigger %I_updated_at before update on public.%I for each row execute function private.set_updated_at()', t, t);
   end loop;
 end $$;
 
@@ -572,7 +605,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_user    uuid := auth.uid();
+  v_user    uuid := (select auth.uid());
   v_score   int  := 0;
   v_total   int  := 0;
   v_details jsonb := '[]'::jsonb;
@@ -682,81 +715,92 @@ create policy "profiles_select_public" on public.profiles
 drop policy if exists "profiles_insert_self" on public.profiles;
 create policy "profiles_insert_self" on public.profiles
   for insert to authenticated
-  with check (id = auth.uid() and role = 'student');
+  with check (id = (select auth.uid()) and role = 'student');
 
 drop policy if exists "profiles_update_self_or_admin" on public.profiles;
 create policy "profiles_update_self_or_admin" on public.profiles
   for update to authenticated
-  using (id = auth.uid() or public.is_admin())
-  with check (id = auth.uid() or public.is_admin());
+  using (id = (select auth.uid()) or (select private.is_admin()))
+  with check (id = (select auth.uid()) or (select private.is_admin()));
 
 drop policy if exists "profiles_delete_admin" on public.profiles;
 create policy "profiles_delete_admin" on public.profiles
   for delete to authenticated
-  using (public.is_admin());
+  using ((select private.is_admin()));
 
--- 7.2 CATEGORIES
+-- 7.2 CATEGORIES (ayrı INSERT/UPDATE/DELETE — SELECT ile çakışma yok)
 drop policy if exists "categories_select_all" on public.categories;
 create policy "categories_select_all" on public.categories
   for select to anon, authenticated
   using (true);
 
 drop policy if exists "categories_write_admin" on public.categories;
-create policy "categories_write_admin" on public.categories
-  for all to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+drop policy if exists "categories_insert_admin" on public.categories;
+create policy "categories_insert_admin" on public.categories
+  for insert to authenticated
+  with check ((select private.is_admin()));
+
+drop policy if exists "categories_update_admin" on public.categories;
+create policy "categories_update_admin" on public.categories
+  for update to authenticated
+  using ((select private.is_admin()))
+  with check ((select private.is_admin()));
+
+drop policy if exists "categories_delete_admin" on public.categories;
+create policy "categories_delete_admin" on public.categories
+  for delete to authenticated
+  using ((select private.is_admin()));
 
 -- 7.3 CONTENTS
 drop policy if exists "contents_select_published_or_owner" on public.contents;
 create policy "contents_select_published_or_owner" on public.contents
   for select to anon, authenticated
-  using (status = 'published' or author_id = auth.uid() or public.is_admin());
+  using (status = 'published' or author_id = (select auth.uid()) or (select private.is_admin()));
 
 drop policy if exists "contents_insert_staff" on public.contents;
 create policy "contents_insert_staff" on public.contents
   for insert to authenticated
-  with check (public.is_staff() and author_id = auth.uid());
+  with check ((select private.is_staff()) and author_id = (select auth.uid()));
 
 drop policy if exists "contents_update_owner_or_admin" on public.contents;
 create policy "contents_update_owner_or_admin" on public.contents
   for update to authenticated
-  using ((author_id = auth.uid() and public.is_staff()) or public.is_admin())
-  with check ((author_id = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()))
+  with check ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
 drop policy if exists "contents_delete_owner_or_admin" on public.contents;
 create policy "contents_delete_owner_or_admin" on public.contents
   for delete to authenticated
-  using ((author_id = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
 -- 7.4 FORUM_TOPICS
 drop policy if exists "forum_topics_select_visible" on public.forum_topics;
 create policy "forum_topics_select_visible" on public.forum_topics
   for select to anon, authenticated
-  using (not is_hidden or author_id = auth.uid() or public.is_staff());
+  using (not is_hidden or author_id = (select auth.uid()) or (select private.is_staff()));
 
 drop policy if exists "forum_topics_insert_auth" on public.forum_topics;
 create policy "forum_topics_insert_auth" on public.forum_topics
   for insert to authenticated
-  with check (author_id = auth.uid());
+  with check (author_id = (select auth.uid()));
 
 drop policy if exists "forum_topics_update_owner_or_staff" on public.forum_topics;
 create policy "forum_topics_update_owner_or_staff" on public.forum_topics
   for update to authenticated
-  using ((author_id = auth.uid() and not is_locked) or public.is_staff())
-  with check (author_id = auth.uid() or public.is_staff());
+  using ((author_id = (select auth.uid()) and not is_locked) or (select private.is_staff()))
+  with check (author_id = (select auth.uid()) or (select private.is_staff()));
 
 drop policy if exists "forum_topics_delete_owner_or_staff" on public.forum_topics;
 create policy "forum_topics_delete_owner_or_staff" on public.forum_topics
   for delete to authenticated
-  using (author_id = auth.uid() or public.is_staff());
+  using (author_id = (select auth.uid()) or (select private.is_staff()));
 
 -- 7.5 FORUM_REPLIES
 drop policy if exists "forum_replies_select_visible" on public.forum_replies;
 create policy "forum_replies_select_visible" on public.forum_replies
   for select to anon, authenticated
   using (
-    (not is_hidden or author_id = auth.uid() or public.is_staff())
+    (not is_hidden or author_id = (select auth.uid()) or (select private.is_staff()))
     and exists (select 1 from public.forum_topics t where t.id = topic_id)  -- konu görünürlüğünü devralır
   );
 
@@ -764,12 +808,12 @@ drop policy if exists "forum_replies_insert_auth" on public.forum_replies;
 create policy "forum_replies_insert_auth" on public.forum_replies
   for insert to authenticated
   with check (
-    author_id = auth.uid()
+    author_id = (select auth.uid())
     and exists (
       select 1 from public.forum_topics t
        where t.id = topic_id
          and not t.is_hidden
-         and (not t.is_locked or public.is_staff())
+         and (not t.is_locked or (select private.is_staff()))
     )
   );
 
@@ -777,59 +821,76 @@ drop policy if exists "forum_replies_update_owner_topicowner_staff" on public.fo
 create policy "forum_replies_update_owner_topicowner_staff" on public.forum_replies
   for update to authenticated
   using (
-    author_id = auth.uid()
-    or public.is_staff()
-    or exists (select 1 from public.forum_topics t where t.id = topic_id and t.author_id = auth.uid())
+    author_id = (select auth.uid())
+    or (select private.is_staff())
+    or exists (select 1 from public.forum_topics t where t.id = topic_id and t.author_id = (select auth.uid()))
   )
   with check (
-    author_id = auth.uid()
-    or public.is_staff()
-    or exists (select 1 from public.forum_topics t where t.id = topic_id and t.author_id = auth.uid())
+    author_id = (select auth.uid())
+    or (select private.is_staff())
+    or exists (select 1 from public.forum_topics t where t.id = topic_id and t.author_id = (select auth.uid()))
   );
 
 drop policy if exists "forum_replies_delete_owner_or_staff" on public.forum_replies;
 create policy "forum_replies_delete_owner_or_staff" on public.forum_replies
   for delete to authenticated
-  using (author_id = auth.uid() or public.is_staff());
+  using (author_id = (select auth.uid()) or (select private.is_staff()));
 
 -- 7.6 QUIZZES
 drop policy if exists "quizzes_select_published_or_owner" on public.quizzes;
 create policy "quizzes_select_published_or_owner" on public.quizzes
   for select to anon, authenticated
-  using (is_published or author_id = auth.uid() or public.is_admin());
+  using (is_published or author_id = (select auth.uid()) or (select private.is_admin()));
 
 drop policy if exists "quizzes_insert_staff" on public.quizzes;
 create policy "quizzes_insert_staff" on public.quizzes
   for insert to authenticated
-  with check (public.is_staff() and author_id = auth.uid());
+  with check ((select private.is_staff()) and author_id = (select auth.uid()));
 
 drop policy if exists "quizzes_update_owner_or_admin" on public.quizzes;
 create policy "quizzes_update_owner_or_admin" on public.quizzes
   for update to authenticated
-  using ((author_id = auth.uid() and public.is_staff()) or public.is_admin())
-  with check ((author_id = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()))
+  with check ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
 drop policy if exists "quizzes_delete_owner_or_admin" on public.quizzes;
 create policy "quizzes_delete_owner_or_admin" on public.quizzes
   for delete to authenticated
-  using ((author_id = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((author_id = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
--- 7.7 QUIZ_QUESTIONS (görünürlük testten devralınır)
+-- 7.7 QUIZ_QUESTIONS (görünürlük testten devralınır; ayrı INSERT/UPDATE/DELETE)
 drop policy if exists "quiz_questions_select_if_quiz_visible" on public.quiz_questions;
 create policy "quiz_questions_select_if_quiz_visible" on public.quiz_questions
   for select to anon, authenticated
   using (exists (select 1 from public.quizzes q where q.id = quiz_id));
 
 drop policy if exists "quiz_questions_write_owner_or_admin" on public.quiz_questions;
-create policy "quiz_questions_write_owner_or_admin" on public.quiz_questions
-  for all to authenticated
+drop policy if exists "quiz_questions_insert_owner_or_admin" on public.quiz_questions;
+create policy "quiz_questions_insert_owner_or_admin" on public.quiz_questions
+  for insert to authenticated
+  with check (
+    (select private.is_admin())
+    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = (select auth.uid()) and (select private.is_staff()))
+  );
+
+drop policy if exists "quiz_questions_update_owner_or_admin" on public.quiz_questions;
+create policy "quiz_questions_update_owner_or_admin" on public.quiz_questions
+  for update to authenticated
   using (
-    public.is_admin()
-    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = auth.uid() and public.is_staff())
+    (select private.is_admin())
+    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = (select auth.uid()) and (select private.is_staff()))
   )
   with check (
-    public.is_admin()
-    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = auth.uid() and public.is_staff())
+    (select private.is_admin())
+    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = (select auth.uid()) and (select private.is_staff()))
+  );
+
+drop policy if exists "quiz_questions_delete_owner_or_admin" on public.quiz_questions;
+create policy "quiz_questions_delete_owner_or_admin" on public.quiz_questions
+  for delete to authenticated
+  using (
+    (select private.is_admin())
+    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = (select auth.uid()) and (select private.is_staff()))
   );
 
 -- 7.8 QUIZ_ANSWER_KEYS (yalnızca test sahibi öğretmen ve admin)
@@ -837,19 +898,19 @@ drop policy if exists "quiz_answer_keys_owner_or_admin" on public.quiz_answer_ke
 create policy "quiz_answer_keys_owner_or_admin" on public.quiz_answer_keys
   for all to authenticated
   using (
-    public.is_admin()
+    (select private.is_admin())
     or exists (
       select 1 from public.quiz_questions qq
         join public.quizzes q on q.id = qq.quiz_id
-       where qq.id = question_id and q.author_id = auth.uid() and public.is_staff()
+       where qq.id = question_id and q.author_id = (select auth.uid()) and (select private.is_staff())
     )
   )
   with check (
-    public.is_admin()
+    (select private.is_admin())
     or exists (
       select 1 from public.quiz_questions qq
         join public.quizzes q on q.id = qq.quiz_id
-       where qq.id = question_id and q.author_id = auth.uid() and public.is_staff()
+       where qq.id = question_id and q.author_id = (select auth.uid()) and (select private.is_staff())
     )
   );
 revoke all on public.quiz_answer_keys from anon;
@@ -859,54 +920,55 @@ drop policy if exists "quiz_results_select_own_or_quiz_owner" on public.quiz_res
 create policy "quiz_results_select_own_or_quiz_owner" on public.quiz_results
   for select to authenticated
   using (
-    user_id = auth.uid()
-    or public.is_admin()
-    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = auth.uid())
+    user_id = (select auth.uid())
+    or (select private.is_admin())
+    or exists (select 1 from public.quizzes q where q.id = quiz_id and q.author_id = (select auth.uid()))
   );
 
 drop policy if exists "quiz_results_delete_own_or_admin" on public.quiz_results;
 create policy "quiz_results_delete_own_or_admin" on public.quiz_results
   for delete to authenticated
-  using (user_id = auth.uid() or public.is_admin());
+  using (user_id = (select auth.uid()) or (select private.is_admin()));
+revoke insert, update on public.quiz_results from anon, authenticated;
 -- INSERT / UPDATE politikası bilinçli olarak YOK: sonuç manipülasyonu engellenir.
 
 -- 7.10 BOOKS
 drop policy if exists "books_select_published" on public.books;
 create policy "books_select_published" on public.books
   for select to anon, authenticated
-  using (is_published or added_by = auth.uid() or public.is_admin());
+  using (is_published or added_by = (select auth.uid()) or (select private.is_admin()));
 
 drop policy if exists "books_insert_staff" on public.books;
 create policy "books_insert_staff" on public.books
   for insert to authenticated
-  with check (public.is_staff() and added_by = auth.uid());
+  with check ((select private.is_staff()) and added_by = (select auth.uid()));
 
 drop policy if exists "books_update_owner_or_admin" on public.books;
 create policy "books_update_owner_or_admin" on public.books
   for update to authenticated
-  using ((added_by = auth.uid() and public.is_staff()) or public.is_admin())
-  with check ((added_by = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((added_by = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()))
+  with check ((added_by = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
 drop policy if exists "books_delete_owner_or_admin" on public.books;
 create policy "books_delete_owner_or_admin" on public.books
   for delete to authenticated
-  using ((added_by = auth.uid() and public.is_staff()) or public.is_admin());
+  using ((added_by = (select auth.uid()) and (select private.is_staff())) or (select private.is_admin()));
 
 -- 7.11 FAVORITES (yalnızca sahibi)
 drop policy if exists "favorites_select_own" on public.favorites;
 create policy "favorites_select_own" on public.favorites
   for select to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "favorites_insert_own" on public.favorites;
 create policy "favorites_insert_own" on public.favorites
   for insert to authenticated
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists "favorites_delete_own" on public.favorites;
 create policy "favorites_delete_own" on public.favorites
   for delete to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 -- 7.12 CONTACT_MESSAGES (herkes gönderebilir, yalnızca admin okur)
 --      Not: anon kullanıcı insert sonrası .select() ile satırı geri OKUYAMAZ;
@@ -916,46 +978,46 @@ create policy "contact_messages_insert_anyone" on public.contact_messages
   for insert to anon, authenticated
   with check (
     status = 'new'
-    and (user_id is null or user_id = auth.uid())
+    and (user_id is null or user_id = (select auth.uid()))
   );
 
 drop policy if exists "contact_messages_select_admin" on public.contact_messages;
 create policy "contact_messages_select_admin" on public.contact_messages
   for select to authenticated
-  using (public.is_admin());
+  using ((select private.is_admin()));
 
 drop policy if exists "contact_messages_update_admin" on public.contact_messages;
 create policy "contact_messages_update_admin" on public.contact_messages
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using ((select private.is_admin()))
+  with check ((select private.is_admin()));
 
 drop policy if exists "contact_messages_delete_admin" on public.contact_messages;
 create policy "contact_messages_delete_admin" on public.contact_messages
   for delete to authenticated
-  using (public.is_admin());
+  using ((select private.is_admin()));
 
 -- 7.13 REPORTS
 drop policy if exists "reports_insert_auth" on public.reports;
 create policy "reports_insert_auth" on public.reports
   for insert to authenticated
-  with check (reporter_id = auth.uid() and status = 'open' and resolved_by is null);
+  with check (reporter_id = (select auth.uid()) and status = 'open' and resolved_by is null);
 
 drop policy if exists "reports_select_own_or_staff" on public.reports;
 create policy "reports_select_own_or_staff" on public.reports
   for select to authenticated
-  using (reporter_id = auth.uid() or public.is_staff());
+  using (reporter_id = (select auth.uid()) or (select private.is_staff()));
 
 drop policy if exists "reports_update_staff" on public.reports;
 create policy "reports_update_staff" on public.reports
   for update to authenticated
-  using (public.is_staff())
-  with check (public.is_staff());
+  using ((select private.is_staff()))
+  with check ((select private.is_staff()));
 
 drop policy if exists "reports_delete_admin" on public.reports;
 create policy "reports_delete_admin" on public.reports
   for delete to authenticated
-  using (public.is_admin());
+  using ((select private.is_admin()));
 
 
 -- ---------------------------------------------------------------------
@@ -988,18 +1050,18 @@ create policy "avatars_read_all" on storage.objects
 drop policy if exists "avatars_insert_own" on storage.objects;
 create policy "avatars_insert_own" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "avatars_update_own" on storage.objects;
 create policy "avatars_update_own" on storage.objects
   for update to authenticated
-  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "avatars_delete_own" on storage.objects;
 create policy "avatars_delete_own" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'avatars' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+  using (bucket_id = 'avatars' and ((storage.foldername(name))[1] = (select auth.uid())::text or (select private.is_admin())));
 
 -- 8.2 content-files — herkes okur, öğretmen/admin kendi klasörüne yazar
 drop policy if exists "content_files_read_all" on storage.objects;
@@ -1010,18 +1072,18 @@ create policy "content_files_read_all" on storage.objects
 drop policy if exists "content_files_insert_staff" on storage.objects;
 create policy "content_files_insert_staff" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'content-files' and public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'content-files' and (select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "content_files_update_staff" on storage.objects;
 create policy "content_files_update_staff" on storage.objects
   for update to authenticated
-  using (bucket_id = 'content-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()))
-  with check (bucket_id = 'content-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'content-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())))
+  with check (bucket_id = 'content-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 drop policy if exists "content_files_delete_staff" on storage.objects;
 create policy "content_files_delete_staff" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'content-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'content-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 -- 8.3 book-covers — herkes okur, öğretmen/admin yazar
 drop policy if exists "book_covers_read_all" on storage.objects;
@@ -1032,18 +1094,18 @@ create policy "book_covers_read_all" on storage.objects
 drop policy if exists "book_covers_insert_staff" on storage.objects;
 create policy "book_covers_insert_staff" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'book-covers' and public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'book-covers' and (select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "book_covers_update_staff" on storage.objects;
 create policy "book_covers_update_staff" on storage.objects
   for update to authenticated
-  using (bucket_id = 'book-covers' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()))
-  with check (bucket_id = 'book-covers' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'book-covers' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())))
+  with check (bucket_id = 'book-covers' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 drop policy if exists "book_covers_delete_staff" on storage.objects;
 create policy "book_covers_delete_staff" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'book-covers' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'book-covers' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 -- 8.4 book-files — ÖZEL bucket: yalnızca giriş yapmış kullanıcılar okur
 drop policy if exists "book_files_read_auth" on storage.objects;
@@ -1054,18 +1116,18 @@ create policy "book_files_read_auth" on storage.objects
 drop policy if exists "book_files_insert_staff" on storage.objects;
 create policy "book_files_insert_staff" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'book-files' and public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'book-files' and (select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "book_files_update_staff" on storage.objects;
 create policy "book_files_update_staff" on storage.objects
   for update to authenticated
-  using (bucket_id = 'book-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()))
-  with check (bucket_id = 'book-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'book-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())))
+  with check (bucket_id = 'book-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 drop policy if exists "book_files_delete_staff" on storage.objects;
 create policy "book_files_delete_staff" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'book-files' and ((public.is_staff() and (storage.foldername(name))[1] = auth.uid()::text) or public.is_admin()));
+  using (bucket_id = 'book-files' and (((select private.is_staff()) and (storage.foldername(name))[1] = (select auth.uid())::text) or (select private.is_admin())));
 
 -- 8.5 forum-attachments — herkes okur, giriş yapan kullanıcı kendi klasörüne yazar
 drop policy if exists "forum_attachments_read_all" on storage.objects;
@@ -1076,12 +1138,12 @@ create policy "forum_attachments_read_all" on storage.objects
 drop policy if exists "forum_attachments_insert_own" on storage.objects;
 create policy "forum_attachments_insert_own" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'forum-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'forum-attachments' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 drop policy if exists "forum_attachments_delete_own_or_staff" on storage.objects;
 create policy "forum_attachments_delete_own_or_staff" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'forum-attachments' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_staff()));
+  using (bucket_id = 'forum-attachments' and ((storage.foldername(name))[1] = (select auth.uid())::text or (select private.is_staff())));
 */
 
 
