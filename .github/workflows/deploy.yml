@@ -1,7 +1,8 @@
 # GitHub Pages'e otomatik derleme ve yayınlama
 # Gerekli ayar: Repo > Settings > Pages > Build and deployment > Source = "GitHub Actions"
-# Supabase anahtarları: Repo > Settings > Secrets and variables > Actions altında
-#   VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY tanımlayın.
+# Ortam değişkenleri: Repo > Settings > Secrets and variables > Actions altında
+#   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY ve VITE_UPLOAD_API_URL tanımlayın.
+#   UYARI: Supabase service_role anahtarını KESİNLİKLE VITE_* değişkenlerine eklemeyin.
 #   Tanımlanmazsa site Demo Modu'nda yayınlanır (çökmez).
 name: GitHub Pages'e Yayınla
 
@@ -38,8 +39,9 @@ jobs:
       - name: Derle
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_UPLOAD_API_URL: ${{ secrets.VITE_UPLOAD_API_URL || vars.VITE_UPLOAD_API_URL }}
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
           VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH }}
 

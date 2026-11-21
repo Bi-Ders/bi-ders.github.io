@@ -8,6 +8,7 @@
  */
 import { supabase } from '../lib/supabase'
 import { detectPaymentProvider, matches, slugify } from '../lib/utils'
+import { compressImageToWebPFile } from '../components/admin/fileHelpers'
 import {
   mockBooks,
   mockCategories,
@@ -101,6 +102,7 @@ export type UploadedFileResult = {
   key: string | null
   size: number
   contentType: string
+  fileName: string
   provider: 'r2' | 'demo'
 }
 
@@ -149,27 +151,34 @@ async function getSupabaseAccessToken(): Promise<string | null> {
 
 /**
  * Dosyayı yükler:
+ * - Görsel dosyaları (image/*) varsayılan olarak fileHelpers.ts ile WebP'ye sıkıştırılır.
  * - VITE_UPLOAD_API_URL tanımlıysa Cloudflare R2 Worker'a (FormData + Supabase access_token) gönderir.
  * - Tanımlı değilse mevcut Demo Modu davranışını (Data URL) korur.
  */
 export async function uploadFile(
   file: File,
-  options: { folder?: string; maxDemoBytes?: number } = {},
+  options: { folder?: string; maxDemoBytes?: number; compressImage?: boolean; maxImageDimension?: number } = {},
 ): Promise<UploadedFileResult> {
+  const prepared =
+    file.type.startsWith('image/') && options.compressImage !== false
+      ? await compressImageToWebPFile(file, options.maxImageDimension ?? 1200)
+      : file
+
   const uploadApiUrl = getUploadApiUrl()
 
   if (!uploadApiUrl) {
-    const url = await fileToDataUrl(file, options.maxDemoBytes ?? 1_500_000)
+    const url = await fileToDataUrl(prepared, options.maxDemoBytes ?? 1_500_000)
     return {
       url,
       key: null,
-      size: file.size,
-      contentType: file.type,
+      size: prepared.size,
+      contentType: prepared.type,
+      fileName: prepared.name,
       provider: 'demo',
     }
   }
 
-  if (file.size > MAX_R2_UPLOAD_BYTES) {
+  if (prepared.size > MAX_R2_UPLOAD_BYTES) {
     throw new Error('Dosya boyutu en fazla 25 MB olabilir.')
   }
 
@@ -179,7 +188,7 @@ export async function uploadFile(
   }
 
   const formData = new FormData()
-  formData.append('file', file, file.name)
+  formData.append('file', prepared, prepared.name)
   if (options.folder) {
     formData.append('folder', options.folder)
   }
@@ -207,8 +216,9 @@ export async function uploadFile(
   return {
     url: payload.url,
     key: payload.key ?? null,
-    size: payload.size ?? file.size,
-    contentType: payload.contentType ?? file.type,
+    size: payload.size ?? prepared.size,
+    contentType: payload.contentType ?? prepared.type,
+    fileName: prepared.name,
     provider: 'r2',
   }
 }

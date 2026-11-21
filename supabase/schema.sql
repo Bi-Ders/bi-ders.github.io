@@ -454,6 +454,9 @@ begin
        or new.topic_id  is distinct from old.topic_id then
       raise exception 'Bu alanları değiştirme yetkiniz yok.' using errcode = '42501';
     end if;
+    if new.body is distinct from old.body and old.author_id is distinct from auth.uid() then
+      raise exception 'Yalnızca cevabın sahibi metni düzenleyebilir.' using errcode = '42501';
+    end if;
     if new.is_accepted is distinct from old.is_accepted and topic_owner is distinct from auth.uid() then
       raise exception 'Yalnızca konu sahibi cevabı kabul edebilir.' using errcode = '42501';
     end if;
@@ -494,27 +497,29 @@ create trigger forum_replies_stats
   after insert or delete on public.forum_replies
   for each row execute function public.update_topic_reply_stats();
 
--- 5.6 Cevap kabul edilince konuyu "çözüldü" işaretle
+-- 5.6 Cevap kabul edilince veya silinince konunun "çözüldü" durumunu eşitle
 create or replace function public.sync_topic_solved()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_topic_id uuid := coalesce(new.topic_id, old.topic_id);
 begin
   update public.forum_topics t
      set is_solved = exists (
            select 1 from public.forum_replies r
             where r.topic_id = t.id and r.is_accepted
          )
-   where t.id = new.topic_id;
+   where t.id = v_topic_id;
   return null;
 end;
 $$;
 
 drop trigger if exists forum_replies_solved on public.forum_replies;
 create trigger forum_replies_solved
-  after update of is_accepted on public.forum_replies
+  after update of is_accepted or delete on public.forum_replies
   for each row execute function public.sync_topic_solved();
 
 -- 5.7 İçerik yayınlanınca published_at doldur

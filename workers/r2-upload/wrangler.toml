@@ -5,11 +5,16 @@ workers_dev = true
 
 [vars]
 PUBLIC_CDN_URL = "https://cdn.biders.org"
+# Ücretsiz 10 GB R2 kotasını aşmamak için toplam bucket güvenlik sınırı (~8 GB)
+MAX_BUCKET_SIZE_BYTES = "8000000000"
 
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "biders-files"
-preview_bucket_name = "biders-files-preview"
+bucket_name = "biders-media"
+preview_bucket_name = "biders-media-preview"
+
+# Özel alan adı (Cloudflare DNS üzerinde biders.org zone'u bağlıysa etkinleştirin):
+# routes = [{ pattern = "upload.biders.org", custom_domain = true }]
 
 # Gizli ortam değişkenlerini (secrets) Wrangler ile tanımlayın:
 #   npx wrangler secret put SUPABASE_URL

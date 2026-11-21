@@ -30,7 +30,7 @@ import {
   isSafeHttpUrl,
   resourceModuleLabels,
 } from '../../lib/utils'
-import { compressImageToWebPFile, detectDocumentFormat } from './fileHelpers'
+import { detectDocumentFormat } from './fileHelpers'
 import { Badge, Chip } from '../ui/Display'
 import { Button } from '../ui/Button'
 import { Alert, EmptyState, ErrorState, RowSkeleton } from '../ui/Feedback'
@@ -109,16 +109,19 @@ export function ResourceManager({
     setError(null)
     setUploading(true)
     try {
-      const prepared = file.type.startsWith('image/') ? await compressImageToWebPFile(file, 1200) : file
       const folder = target === 'lesson' ? 'contents' : target
-      const uploaded = await uploadFile(prepared, { folder, maxDemoBytes: 1_500_000 })
+      const uploaded = await uploadFile(file, {
+        folder,
+        maxDemoBytes: 1_500_000,
+        maxImageDimension: 1200,
+      })
       if (uploadedR2Key) {
         void deleteUploadedFile(uploadedR2Key, { silent: true })
       }
       setFileUrl(uploaded.url)
-      setUploadedName(prepared.name)
+      setUploadedName(uploaded.fileName)
       setUploadedR2Key(uploaded.key)
-      setFormat(detectDocumentFormat(prepared.name))
+      setFormat(detectDocumentFormat(uploaded.fileName))
       setFileSize(formatFileSize(uploaded.size))
       if (!title.trim()) {
         setTitle(file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '))
@@ -497,7 +500,7 @@ export function ResourceManager({
                 <span>{uploading ? 'Yükleniyor…' : 'PDF / PPTX / DOCX / ZIP Seç'}</span>
                 <input
                   type="file"
-                  accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.webp,.png,.jpg,.jpeg,application/pdf"
+                  accept=".pdf,.pptx,.docx,.zip,.webp,.png,.jpg,.jpeg,application/pdf"
                   className="sr-only"
                   disabled={uploading}
                   onChange={handleFilePick}

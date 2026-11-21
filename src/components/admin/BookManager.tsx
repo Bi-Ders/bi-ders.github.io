@@ -25,7 +25,6 @@ import {
 } from '../../services/api'
 import { useAsync } from '../../hooks'
 import { detectPaymentProvider, formatPrice, isSafeHttpUrl } from '../../lib/utils'
-import { compressImageToWebPFile } from './fileHelpers'
 import { BookCover } from '../books/BookCover'
 import { Badge } from '../ui/Display'
 import { Button } from '../ui/Button'
@@ -136,8 +135,11 @@ export function BookManager({
     setError(null)
     setUploadingCover(true)
     try {
-      const webpFile = await compressImageToWebPFile(file, 1200)
-      const uploaded = await uploadFile(webpFile, { folder: 'book-covers', maxDemoBytes: 1_500_000 })
+      const uploaded = await uploadFile(file, {
+        folder: 'book-covers',
+        maxDemoBytes: 1_500_000,
+        maxImageDimension: 1200,
+      })
       if (uploadedCoverKey) {
         void deleteUploadedFile(uploadedCoverKey, { silent: true })
       }

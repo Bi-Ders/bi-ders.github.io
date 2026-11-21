@@ -10,6 +10,7 @@
  *   - Token SUPABASE_URL + SUPABASE_ANON_KEY ile doğrulanır.
  *   - profiles tablosundaki rol 'teacher' veya 'admin' değilse 403 döner.
  *   - Yalnızca izinli dosya türleri (webp, png, jpg, pdf, pptx, docx, zip) ve en fazla 25 MB kabul edilir.
+ *   - Ücretsiz 10 GB R2 kotasını aşmamak için toplam bucket boyutu ~8 GB ile sınırlandırılır.
  */
 
 export interface Env {
@@ -17,12 +18,17 @@ export interface Env {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   PUBLIC_CDN_URL?: string
+  /** Toplam bucket boyut sınırı (bayt). Varsayılan: 8_000_000_000 (~8 GB) */
+  MAX_BUCKET_SIZE_BYTES?: string
   /** İsteğe bağlı virgülle ayrılmış ek izinli CORS origin'leri */
   EXTRA_ALLOWED_ORIGINS?: string
 }
 
 const DEFAULT_CDN_URL = 'https://cdn.biders.org'
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
+const MAX_REQUEST_CONTENT_LENGTH = MAX_FILE_SIZE_BYTES + 1024 * 1024 // 26 MB (multipart üstbilgi payı)
+const DEFAULT_MAX_BUCKET_SIZE_BYTES = 8 * 1000 * 1000 * 1000 // 8 GB (10 GB ücretsiz kota için güvenlik tamponu)
+const MAX_BUCKET_LIST_PAGES = 200
 const DEFAULT_ALLOWED_ORIGINS = ['https://biders.org', 'http://localhost:5173']
 
 type AllowedFileSpec = {
@@ -314,10 +320,56 @@ function extractKeyFromInput(rawKey: string | undefined, rawUrl: string | undefi
   return candidate
 }
 
+function getMaxBucketSizeBytes(env: Env): number {
+  if (!env.MAX_BUCKET_SIZE_BYTES) return DEFAULT_MAX_BUCKET_SIZE_BYTES
+  const parsed = Number(env.MAX_BUCKET_SIZE_BYTES)
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MAX_BUCKET_SIZE_BYTES
+  return Math.floor(parsed)
+}
+
+/**
+ * Ücretsiz 10 GB R2 kotasını aşmamak için bucket içindeki tüm nesnelerin
+ * toplam boyutunu hesaplar ve yeni dosya eklendiğinde ~8 GB sınırının
+ * geçilip geçilmediğini kontrol eder.
+ */
+async function checkBucketQuota(
+  bucket: R2Bucket,
+  incomingBytes: number,
+  maxBucketBytes: number,
+): Promise<{ allowed: boolean; usedBytes: number; pageLimitHit: boolean }> {
+  let usedBytes = 0
+  let cursor: string | undefined
+
+  for (let page = 0; page < MAX_BUCKET_LIST_PAGES; page++) {
+    const listed = await bucket.list({ cursor, limit: 1000 })
+    for (const obj of listed.objects) {
+      usedBytes += obj.size
+      if (usedBytes + incomingBytes > maxBucketBytes) {
+        return { allowed: false, usedBytes, pageLimitHit: false }
+      }
+    }
+    if (!listed.truncated) {
+      return { allowed: true, usedBytes, pageLimitHit: false }
+    }
+    cursor = listed.cursor
+  }
+
+  // Güvenli tarafta kal: çok fazla nesne nedeniyle tam boyut hesaplanamadıysa yüklemeyi durdur.
+  return { allowed: false, usedBytes, pageLimitHit: true }
+}
+
 async function handleUpload(request: Request, env: Env, userId: string): Promise<Response> {
   const contentTypeHeader = request.headers.get('Content-Type') ?? ''
   if (!contentTypeHeader.toLowerCase().includes('multipart/form-data')) {
     return jsonResponse({ error: 'İstek multipart/form-data biçiminde olmalıdır.' }, 400, request, env)
+  }
+
+  const contentLengthRaw = request.headers.get('Content-Length')
+  if (contentLengthRaw) {
+    const contentLength = Number(contentLengthRaw)
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_CONTENT_LENGTH) {
+      return jsonResponse({ error: 'Dosya boyutu en fazla 25 MB olabilir.' }, 413, request, env)
+    }
   }
 
   let formData: FormData
@@ -362,6 +414,13 @@ async function handleUpload(request: Request, env: Env, userId: string): Promise
   }
 
   const buffer = await fileEntry.arrayBuffer()
+  if (buffer.byteLength === 0) {
+    return jsonResponse({ error: 'Boş dosya yüklenemez.' }, 400, request, env)
+  }
+  if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
+    return jsonResponse({ error: 'Dosya boyutu en fazla 25 MB olabilir.' }, 413, request, env)
+  }
+
   const head = new Uint8Array(buffer.slice(0, 16))
   if (!hasValidSignature(spec.ext, head)) {
     return jsonResponse(
@@ -372,9 +431,27 @@ async function handleUpload(request: Request, env: Env, userId: string): Promise
     )
   }
 
+  const maxBucketBytes = getMaxBucketSizeBytes(env)
+  const quota = await checkBucketQuota(env.BUCKET, buffer.byteLength, maxBucketBytes)
+  if (!quota.allowed) {
+    return jsonResponse(
+      {
+        error: quota.pageLimitHit
+          ? 'Depolama kotası doğrulanamadı; güvenlik nedeniyle yükleme durduruldu.'
+          : 'Depolama kotası sınırına (~8 GB) ulaşıldı. Ücretsiz 10 GB kotayı aşmamak için yeni yükleme durduruldu; eski dosyaları temizleyip tekrar deneyin.',
+        usedBytes: quota.usedBytes,
+        limitBytes: maxBucketBytes,
+      },
+      507,
+      request,
+      env,
+    )
+  }
+
   const folder = sanitizeFolder(formData.get('folder'))
   const key = buildObjectKey(folder, fileEntry.name, spec.ext)
   const cdnBase = (env.PUBLIC_CDN_URL ?? DEFAULT_CDN_URL).replace(/\/$/, '')
+  const safeOriginalName = fileEntry.name.replace(/[\r\n\0]/g, '').slice(0, 180)
 
   await env.BUCKET.put(key, buffer, {
     httpMetadata: {
@@ -383,7 +460,7 @@ async function handleUpload(request: Request, env: Env, userId: string): Promise
     },
     customMetadata: {
       uploadedBy: userId,
-      originalName: fileEntry.name.slice(0, 180),
+      originalName: safeOriginalName,
     },
   })
 
@@ -391,8 +468,10 @@ async function handleUpload(request: Request, env: Env, userId: string): Promise
     {
       url: `${cdnBase}/${key}`,
       key,
-      size: fileEntry.size,
+      size: buffer.byteLength,
       contentType: spec.contentType,
+      bucketUsedBytes: quota.usedBytes + buffer.byteLength,
+      bucketLimitBytes: maxBucketBytes,
     },
     201,
     request,
