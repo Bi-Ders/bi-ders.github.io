@@ -5,7 +5,7 @@ import { siteConfig } from '../config/site'
 import { useAuth } from '../context/AuthContext'
 import { useAsync, usePageMeta } from '../hooks'
 import { getBooks, getCategories, getContents, getForumTopics, getQuizzes } from '../services/api'
-import { contentTypeLabels, difficultyLabels, formatNumber, formatPrice, timeAgo } from '../lib/utils'
+import { cn, contentTypeLabels, difficultyLabels, formatNumber, formatPrice, timeAgo } from '../lib/utils'
 import { BookCover } from '../components/books/BookCover'
 import { SearchBar } from '../components/layout/SearchBar'
 import { ModuleIcon } from '../components/modules/ModuleIcon'
@@ -140,9 +140,12 @@ export function HomePage() {
         </div>
 
         {categories.loading ? (
-          <div className="mt-6 flex flex-wrap gap-2.5" aria-hidden>
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-11 w-32 rounded-xl" />
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-hidden>
+            {Array.from({ length: 7 }, (_, i) => (
+              <Skeleton
+                key={i}
+                className={cn('h-12 w-full rounded-2xl', i === 6 && 'col-span-2 sm:col-span-3 lg:col-span-2')}
+              />
             ))}
           </div>
         ) : categories.error ? (
@@ -150,17 +153,27 @@ export function HomePage() {
             <ErrorState message={categories.error} onRetry={categories.reload} />
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {(categories.data ?? []).map((c) => (
-              <Link
-                key={c.id}
-                to={`/dersler?kategori=${c.slug}`}
-                className="card card-hover flex items-center gap-3 px-4 py-3.5"
-              >
-                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: c.color ?? 'var(--color-brand)' }} aria-hidden />
-                <span className="truncate font-semibold text-ink">{c.name}</span>
-              </Link>
-            ))}
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {(categories.data ?? []).map((c, idx, arr) => {
+              const isWideLast = arr.length === 7 && idx === 6
+              return (
+                <Link
+                  key={c.id}
+                  to={`/dersler?kategori=${c.slug}`}
+                  className={cn(
+                    'card card-hover flex items-center gap-3 px-4 py-3.5',
+                    isWideLast && 'col-span-2 justify-center sm:col-span-3 lg:col-span-2 lg:justify-start',
+                  )}
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: c.color ?? 'var(--color-brand)' }}
+                    aria-hidden
+                  />
+                  <span className="leading-snug font-semibold text-ink">{c.name}</span>
+                </Link>
+              )
+            })}
           </div>
         )}
       </section>

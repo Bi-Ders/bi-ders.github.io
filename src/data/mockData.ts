@@ -108,7 +108,7 @@ const author = (i: number): AuthorSummary => {
 }
 
 // ---------------------------------------------------------------
-// Kategoriler (Ortaokul Müfredatı — 6 Temel Ders)
+// Kategoriler (Ortaokul Müfredatı — 7 Temel Ders)
 // ---------------------------------------------------------------
 export const mockCategories: Category[] = [
   {
@@ -142,7 +142,7 @@ export const mockCategories: Category[] = [
     id: 'c-sos',
     slug: 'sosyal-bilgiler',
     name: 'Sosyal Bilgiler',
-    description: 'Tarih, coğrafya, kültür, vatandaşlık ve inkılap tarihi',
+    description: 'Tarih, coğrafya, kültür, haklar ve vatandaşlık',
     icon: 'globe',
     color: '#B4441C',
     sort_order: 4,
@@ -164,6 +164,15 @@ export const mockCategories: Category[] = [
     icon: 'moon-star',
     color: '#7A4E12',
     sort_order: 6,
+  },
+  {
+    id: 'c-ink',
+    slug: 'inkilap-tarihi',
+    name: 'T.C. İnkılap Tarihi ve Atatürkçülük',
+    description: 'Millî Mücadele, Cumhuriyet dönemi, Atatürk ilke ve inkılapları',
+    icon: 'landmark',
+    color: '#9E1B32',
+    sort_order: 7,
   },
 ]
 
@@ -222,7 +231,7 @@ const contentSeeds: ContentSeed[] = [
   },
   {
     id: 'ct-4',
-    cat: 'sosyal-bilgiler',
+    cat: 'inkilap-tarihi',
     a: 5,
     title: 'Millî Mücadele Kronolojisi (1919–1923)',
     slug: 'milli-mucadele-kronolojisi',
@@ -230,9 +239,23 @@ const contentSeeds: ContentSeed[] = [
     body: `## Hazırlık dönemi\n19 Mayıs 1919'da Samsun'a çıkışla başlayan süreçte Amasya Genelgesi, Erzurum ve Sivas kongreleri millî iradenin örgütlendiği temel aşamalardır.\n\n## Cepheler ve zafer\nDoğu, Güney ve Batı cephelerinde kazanılan başarılar; Sakarya Meydan Muharebesi, Büyük Taarruz ve Lozan Barış Antlaşması ile taçlanmıştır.`,
     type: 'document',
     grade: '8. Sınıf / LGS',
-    tags: ['sosyal bilgiler', 'inkılap tarihi', 'kronoloji'],
+    tags: ['inkılap tarihi', 'atatürkçülük', 'kronoloji', 'lgs'],
     view_count: 2944,
     published_at: ago(9),
+  },
+  {
+    id: 'ct-7',
+    cat: 'sosyal-bilgiler',
+    a: 5,
+    title: 'Türkiye’nin İklim Tipleri ve Harita Okuma Rehberi',
+    slug: 'turkiyenin-iklim-tipleri-ve-harita-okuma',
+    summary: 'Karadeniz, Akdeniz ve Karasal iklimin özellikleri, bitki örtüsü ve fiziki haritada renklerin anlamları.',
+    body: `## Türkiye’de görülen başlıca iklimler\n- **Karadeniz İklimi:** Her mevsim yağışlı, bitki örtüsü ormandır.\n- **Akdeniz İklimi:** Yazlar sıcak ve kurak, kışlar ılık ve yağışlıdır; bitki örtüsü makidir.\n- **Karasal İklim:** Yazlar sıcak ve kurak, kışlar soğuk ve kar yağışlıdır; bitki örtüsü bozkırdır.\n\n## Fiziki harita renkleri\nYeşil alçak ovaları, sarı orta yükseltileri, kahverengi ise yüksek dağlık alanları gösterir.`,
+    type: 'lesson',
+    grade: '6. Sınıf',
+    tags: ['sosyal bilgiler', 'iklim', 'harita'],
+    view_count: 1640,
+    published_at: ago(10),
   },
   {
     id: 'ct-5',
@@ -437,7 +460,7 @@ export const mockForumReplies: ForumReply[] = [
 ]
 
 // ---------------------------------------------------------------
-// Testler (6 Ortaokul Dersine Göre)
+// Testler (Ortaokul Derslerine Göre)
 // ---------------------------------------------------------------
 export const mockQuizzes: Quiz[] = [
   {
@@ -491,7 +514,7 @@ export const mockQuizzes: Quiz[] = [
   {
     id: 'qz-4',
     author_id: mockProfiles[5]!.id,
-    category_id: cat('sosyal-bilgiler').id,
+    category_id: cat('inkilap-tarihi').id,
     title: 'Millî Mücadele: Hazırlık Dönemi ve Cepheler',
     slug: 'milli-mucadele-hazirlik-ve-cepheler',
     description: 'Genelgeler, kongreler, TBMM’nin açılışı ve Kurtuluş Savaşı cepheleri üzerine 5 soru.',
@@ -502,7 +525,7 @@ export const mockQuizzes: Quiz[] = [
     created_at: ago(14),
     question_count: 5,
     author: author(5),
-    category: cat('sosyal-bilgiler'),
+    category: cat('inkilap-tarihi'),
   },
   {
     id: 'qz-5',

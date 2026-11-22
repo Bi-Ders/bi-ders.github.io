@@ -1165,22 +1165,24 @@ end $$;
 
 
 -- ---------------------------------------------------------------------
--- 10. BAŞLANGIÇ VERİLERİ (Ortaokul Müfredatı — 6 Temel Ders)
+-- 10. BAŞLANGIÇ VERİLERİ (Ortaokul Müfredatı — 7 Temel Ders)
 -- ---------------------------------------------------------------------
 do $$
 declare
   v_turkce uuid;
   v_fen uuid;
   v_sosyal uuid;
+  v_inkilap uuid;
   v_legacy_slugs text[] := array['fizik', 'kimya', 'biyoloji', 'edebiyat', 'tarih', 'cografya'];
 begin
   insert into public.categories (slug, name, description, icon, color, sort_order) values
-    ('turkce',          'Türkçe',          'Okuma anlama, dil bilgisi, paragraf ve yazma becerileri',    'languages',     '#9A3B8C', 1),
-    ('matematik',       'Matematik',       'Sayılar, işlemler, cebir, geometri ve veri analizi',         'sigma',         '#2F55D4', 2),
-    ('fen-bilimleri',   'Fen Bilimleri',   'Canlılar, madde, kuvvet, enerji ve Dünya ile evren',         'flask-conical', '#0E7C66', 3),
-    ('sosyal-bilgiler', 'Sosyal Bilgiler', 'Tarih, coğrafya, kültür, vatandaşlık ve inkılap tarihi',     'globe',         '#B4441C', 4),
-    ('ingilizce',       'İngilizce',       'Kelime bilgisi, dil bilgisi, diyalog ve okuma becerileri',   'book-a',        '#1F6E8C', 5),
-    ('din-kulturu',     'Din Kültürü',     'İnanç, ibadet, ahlak ve değerler eğitimi',                   'moon-star',     '#7A4E12', 6)
+    ('turkce',          'Türkçe',                              'Okuma anlama, dil bilgisi, paragraf ve yazma becerileri',         'languages',     '#9A3B8C', 1),
+    ('matematik',       'Matematik',                           'Sayılar, işlemler, cebir, geometri ve veri analizi',              'sigma',         '#2F55D4', 2),
+    ('fen-bilimleri',   'Fen Bilimleri',                       'Canlılar, madde, kuvvet, enerji ve Dünya ile evren',              'flask-conical', '#0E7C66', 3),
+    ('sosyal-bilgiler', 'Sosyal Bilgiler',                     'Tarih, coğrafya, kültür, haklar ve vatandaşlık',                  'globe',         '#B4441C', 4),
+    ('ingilizce',       'İngilizce',                           'Kelime bilgisi, dil bilgisi, diyalog ve okuma becerileri',        'book-a',        '#1F6E8C', 5),
+    ('din-kulturu',     'Din Kültürü',                         'İnanç, ibadet, ahlak ve değerler eğitimi',                        'moon-star',     '#7A4E12', 6),
+    ('inkilap-tarihi',  'T.C. İnkılap Tarihi ve Atatürkçülük', 'Millî Mücadele, Cumhuriyet dönemi, Atatürk ilke ve inkılapları',  'landmark',      '#9E1B32', 7)
   on conflict (slug) do update set
     name        = excluded.name,
     description = excluded.description,
@@ -1188,9 +1190,10 @@ begin
     color       = excluded.color,
     sort_order  = excluded.sort_order;
 
-  select id into v_turkce from public.categories where slug = 'turkce';
-  select id into v_fen    from public.categories where slug = 'fen-bilimleri';
-  select id into v_sosyal from public.categories where slug = 'sosyal-bilgiler';
+  select id into v_turkce  from public.categories where slug = 'turkce';
+  select id into v_fen     from public.categories where slug = 'fen-bilimleri';
+  select id into v_sosyal  from public.categories where slug = 'sosyal-bilgiler';
+  select id into v_inkilap from public.categories where slug = 'inkilap-tarihi';
 
   -- Eski lise kategorilerine bağlı kayıt varsa yeni ortaokul derslerine güvenli eşle
   update public.contents c
@@ -1198,7 +1201,7 @@ begin
                          when 'fizik'    then v_fen
                          when 'kimya'    then v_fen
                          when 'biyoloji' then v_fen
-                         when 'tarih'    then v_sosyal
+                         when 'tarih'    then v_inkilap
                          when 'cografya' then v_sosyal
                          when 'edebiyat' then v_turkce
                          else null
@@ -1212,7 +1215,7 @@ begin
                          when 'fizik'    then v_fen
                          when 'kimya'    then v_fen
                          when 'biyoloji' then v_fen
-                         when 'tarih'    then v_sosyal
+                         when 'tarih'    then v_inkilap
                          when 'cografya' then v_sosyal
                          when 'edebiyat' then v_turkce
                          else null
@@ -1226,7 +1229,7 @@ begin
                          when 'fizik'    then v_fen
                          when 'kimya'    then v_fen
                          when 'biyoloji' then v_fen
-                         when 'tarih'    then v_sosyal
+                         when 'tarih'    then v_inkilap
                          when 'cografya' then v_sosyal
                          when 'edebiyat' then v_turkce
                          else null
@@ -1240,7 +1243,7 @@ begin
                          when 'fizik'    then v_fen
                          when 'kimya'    then v_fen
                          when 'biyoloji' then v_fen
-                         when 'tarih'    then v_sosyal
+                         when 'tarih'    then v_inkilap
                          when 'cografya' then v_sosyal
                          when 'edebiyat' then v_turkce
                          else null
