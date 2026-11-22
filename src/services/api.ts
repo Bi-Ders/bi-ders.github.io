@@ -1374,6 +1374,80 @@ export async function deleteForumReply(replyId: string): Promise<void> {
   fail(error)
 }
 
+async function getForumReplyById(replyId: string): Promise<ForumReply | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('forum_replies')
+    .select(`*, ${AUTHOR}`)
+    .eq('id', replyId)
+    .maybeSingle()
+  if (error || !data) return null
+  const likesMap = getLikesMap()
+  return {
+    ...(data as unknown as ForumReply),
+    like_count: likesMap[`reply:${replyId}`]?.length ?? 0,
+  }
+}
+
+export type ForumRepliesRealtimeHandlers = {
+  onInsert: (reply: ForumReply) => void
+  onDelete: (replyId: string) => void
+}
+
+/**
+ * Bir forum konusunun cevaplarını (public.forum_replies) Supabase Realtime ile canlı dinler.
+ * - INSERT olayları sunucu tarafında `topic_id=eq.<topicId>` ile filtrelenir ve yazar profiliyle hidratlanır.
+ * - DELETE olayları Supabase Realtime sınırlaması gereği filtresiz dinlenir; istemci yalnızca mevcut
+ *   konudaki listede bulunan `old.id` kayıtlarını kaldırır.
+ * - Demo Modu'nda (`supabase === null`) güvenli no-op temizleme fonksiyonu döner.
+ */
+export function subscribeForumReplies(
+  topicId: string,
+  handlers: ForumRepliesRealtimeHandlers,
+): () => void {
+  const client = supabase
+  if (!client || !topicId) return () => undefined
+
+  let active = true
+
+  const channel = client
+    .channel(`forum-replies:${topicId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'forum_replies',
+        filter: `topic_id=eq.${topicId}`,
+      },
+      (payload) => {
+        const insertedId = typeof payload.new?.id === 'string' ? payload.new.id : null
+        if (!insertedId) return
+        void getForumReplyById(insertedId).then((reply) => {
+          if (active && reply) handlers.onInsert(reply)
+        })
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'forum_replies',
+      },
+      (payload) => {
+        const deletedId = typeof payload.old?.id === 'string' ? payload.old.id : null
+        if (active && deletedId) handlers.onDelete(deletedId)
+      },
+    )
+    .subscribe()
+
+  return () => {
+    active = false
+    void client.removeChannel(channel)
+  }
+}
+
 export function isForumItemLiked(userId: string | null | undefined, targetType: 'topic' | 'reply', targetId: string): boolean {
   if (!userId) return false
   const map = getLikesMap()

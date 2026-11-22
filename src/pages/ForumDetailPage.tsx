@@ -25,6 +25,7 @@ import {
   getForumTopic,
   isFavorite,
   isForumItemLiked,
+  subscribeForumReplies,
   toggleFavorite,
   toggleForumLike,
   toggleReplyAccepted,
@@ -53,7 +54,50 @@ export function ForumDetailPage() {
   const [modMessage, setModMessage] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  const topicId = data?.topic.id ?? null
+
   usePageMeta(data?.topic.title ?? 'Forum Konusu')
+
+  useEffect(() => {
+    if (!topicId) return
+    return subscribeForumReplies(topicId, {
+      onInsert: (incoming) => {
+        setData((prev) => {
+          if (!prev || prev.topic.id !== topicId) return prev
+          if (prev.replies.some((r) => r.id === incoming.id)) return prev
+          const nextReplies = [...prev.replies, incoming].sort((a, b) =>
+            a.created_at.localeCompare(b.created_at),
+          )
+          return {
+            topic: {
+              ...prev.topic,
+              reply_count: Math.max(prev.topic.reply_count + 1, nextReplies.length),
+              last_activity_at:
+                incoming.created_at > prev.topic.last_activity_at
+                  ? incoming.created_at
+                  : prev.topic.last_activity_at,
+            },
+            replies: nextReplies,
+          }
+        })
+      },
+      onDelete: (deletedId) => {
+        setData((prev) => {
+          if (!prev || prev.topic.id !== topicId) return prev
+          if (!prev.replies.some((r) => r.id === deletedId)) return prev
+          const nextReplies = prev.replies.filter((r) => r.id !== deletedId)
+          return {
+            topic: {
+              ...prev.topic,
+              reply_count: Math.max(0, prev.topic.reply_count - 1),
+              is_solved: nextReplies.some((r) => r.is_accepted),
+            },
+            replies: nextReplies,
+          }
+        })
+      },
+    })
+  }, [topicId, setData])
 
   useEffect(() => {
     let active = true
@@ -129,18 +173,18 @@ export function ForumDetailPage() {
         role: profile?.role ?? 'student',
       })
       setReplyBody('')
-      setData((prev) =>
-        prev
-          ? {
-              topic: {
-                ...prev.topic,
-                reply_count: prev.topic.reply_count + 1,
-                last_activity_at: created.created_at,
-              },
-              replies: [...prev.replies, created],
-            }
-          : prev,
-      )
+      setData((prev) => {
+        if (!prev) return prev
+        if (prev.replies.some((r) => r.id === created.id)) return prev
+        return {
+          topic: {
+            ...prev.topic,
+            reply_count: prev.topic.reply_count + 1,
+            last_activity_at: created.created_at,
+          },
+          replies: [...prev.replies, created],
+        }
+      })
     } catch (err) {
       setReplyError((err as Error).message)
     } finally {
@@ -201,14 +245,18 @@ export function ForumDetailPage() {
   const handleDeleteReply = async (replyId: string) => {
     if (!data) return
     await deleteForumReply(replyId)
-    setData((prev) =>
-      prev
-        ? {
-            topic: { ...prev.topic, reply_count: Math.max(0, prev.topic.reply_count - 1) },
-            replies: prev.replies.filter((r) => r.id !== replyId),
-          }
-        : prev,
-    )
+    setData((prev) => {
+      if (!prev || !prev.replies.some((r) => r.id === replyId)) return prev
+      const nextReplies = prev.replies.filter((r) => r.id !== replyId)
+      return {
+        topic: {
+          ...prev.topic,
+          reply_count: Math.max(0, prev.topic.reply_count - 1),
+          is_solved: nextReplies.some((r) => r.is_accepted),
+        },
+        replies: nextReplies,
+      }
+    })
   }
 
   if (loading) {

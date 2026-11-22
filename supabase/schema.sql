@@ -1148,7 +1148,24 @@ create policy "forum_attachments_delete_own_or_staff" on storage.objects
 
 
 -- ---------------------------------------------------------------------
--- 9. BAŞLANGIÇ VERİLERİ
+-- 9. REALTIME PUBLICATION
+-- ---------------------------------------------------------------------
+do $$
+begin
+  if not exists (
+    select 1
+      from pg_publication_tables
+     where pubname = 'supabase_realtime'
+       and schemaname = 'public'
+       and tablename = 'forum_replies'
+  ) then
+    alter publication supabase_realtime add table public.forum_replies;
+  end if;
+end $$;
+
+
+-- ---------------------------------------------------------------------
+-- 10. BAŞLANGIÇ VERİLERİ
 -- ---------------------------------------------------------------------
 insert into public.categories (slug, name, description, icon, color, sort_order) values
   ('matematik',  'Matematik',   'Sayılar, cebir, geometri ve analiz',            'sigma',       '#2F55D4', 1),
