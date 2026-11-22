@@ -9,7 +9,7 @@ Bu klasör, Supabase Storage yerine **Cloudflare R2** üzerine güvenli dosya y�
 - Toplam bucket boyut güvenliği: ücretsiz 10 GB R2 kotasını aşmamak için yükleme öncesi toplam boyut **~8 GB** (`MAX_BUCKET_SIZE_BYTES=8000000000`) ile sınırlandırılır; sınır aşılırsa `507 Insufficient Storage` döner.
 - R2 dosya yolu: `<klasor>/<yil-ay>/<rastgele-slug>.<uzanti>`
 - Yanıt: `{ "url": "https://cdn.biders.org/...", "key": "...", "size": ..., "contentType": "...", "bucketUsedBytes": ..., "bucketLimitBytes": ... }`
-- CORS: `https://biders.org` ve `http://localhost:5173`
+- CORS: `https://biders.org`, `https://www.biders.org`, `https://bi-ders.github.io` ve `http://localhost:5173`
 
 ## Kurulum ve Yayınlama
 
@@ -33,7 +33,12 @@ R2 bucket (`biders-media`) CORS kuralı:
 ```json
 [
   {
-    "AllowedOrigins": ["https://biders.org", "http://localhost:5173"],
+    "AllowedOrigins": [
+      "https://biders.org",
+      "https://www.biders.org",
+      "https://bi-ders.github.io",
+      "http://localhost:5173"
+    ],
     "AllowedMethods": ["GET", "HEAD"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag", "Content-Length", "Content-Type"],

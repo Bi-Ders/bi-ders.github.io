@@ -164,7 +164,8 @@ export function ResourceModulePage({ module }: { module: ResourceModuleKey }) {
   const hasFilters = Boolean(grade || categorySlug || unit || query)
 
   const handleDownload = (resource: ModuleResource) => {
-    const nextCount = recordResourceDownload(resource.id)
+    const currentCount = downloadCounts[resource.id] ?? resource.download_count
+    const nextCount = recordResourceDownload(resource.id, currentCount)
     setDownloadCounts((prev) => ({ ...prev, [resource.id]: nextCount }))
 
     if (resource.file_url) {

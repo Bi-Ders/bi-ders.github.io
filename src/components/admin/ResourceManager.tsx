@@ -18,6 +18,7 @@ import {
   deleteUploadedFile,
   getAllModuleResources,
   getManagedContents,
+  getUploadApiUrl,
   isR2UploadConfigured,
   uploadFile,
 } from '../../services/api'
@@ -89,6 +90,7 @@ export function ResourceManager({
   const [fileUrl, setFileUrl] = useState('')
   const [uploadedName, setUploadedName] = useState<string | null>(null)
   const [uploadedR2Key, setUploadedR2Key] = useState<string | null>(null)
+  const [uploadedProvider, setUploadedProvider] = useState<'r2' | 'demo' | null>(null)
   const [uploading, setUploading] = useState(false)
   const [summary, setSummary] = useState('')
   const [bodyText, setBodyText] = useState('')
@@ -100,6 +102,7 @@ export function ResourceManager({
   const [success, setSuccess] = useState<{ text: string; href: string; linkLabel: string } | null>(null)
 
   const r2Enabled = isR2UploadConfigured()
+  const uploadApiUrl = getUploadApiUrl()
   const resources = useAsync(() => getAllModuleResources(), [])
   const lessons = useAsync(() => getManagedContents(userId, isAdmin), [userId, isAdmin])
 
@@ -121,6 +124,7 @@ export function ResourceManager({
       setFileUrl(uploaded.url)
       setUploadedName(uploaded.fileName)
       setUploadedR2Key(uploaded.key)
+      setUploadedProvider(uploaded.provider)
       setFormat(detectDocumentFormat(uploaded.fileName))
       setFileSize(formatFileSize(uploaded.size))
       if (!title.trim()) {
@@ -141,6 +145,7 @@ export function ResourceManager({
     setFileUrl('')
     setUploadedName(null)
     setUploadedR2Key(null)
+    setUploadedProvider(null)
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -222,6 +227,7 @@ export function ResourceManager({
       setFileUrl('')
       setUploadedName(null)
       setUploadedR2Key(null)
+      setUploadedProvider(null)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -508,9 +514,22 @@ export function ResourceManager({
               </label>
 
               {uploadedName ? (
-                <span className="inline-flex items-center gap-2 rounded-xl border border-success/30 bg-success-soft px-3 py-1.5 text-xs font-bold text-success">
+                <span className="inline-flex flex-wrap items-center gap-2 rounded-xl border border-success/30 bg-success-soft px-3 py-1.5 text-xs font-bold text-success">
                   <FileText className="size-3.5" aria-hidden />
-                  {uploadedName} ({fileSize})
+                  <span>
+                    {uploadedProvider === 'r2' ? 'Cloudflare R2 · ' : 'Demo (Tarayıcı) · '}
+                    {uploadedName} ({fileSize})
+                  </span>
+                  {uploadedProvider === 'r2' && isSafeHttpUrl(fileUrl) && (
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-0.5 underline hover:opacity-80"
+                    >
+                      CDN <ExternalLink className="size-3" aria-hidden />
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={clearAttachment}
@@ -523,8 +542,8 @@ export function ResourceManager({
               ) : (
                 <span className="text-xs text-muted">
                   {r2Enabled
-                    ? 'Cloudflare R2’ye en fazla 25 MB (PDF, PPTX, DOCX, ZIP, görsel) yükleyebilirsiniz.'
-                    : 'Demo Modu için en fazla 1.5 MB dosya tarayıcıda saklanır; büyük dosyalar için Harici Link kullanabilirsiniz.'}
+                    ? `Cloudflare R2 (${uploadApiUrl}) sunucusuna en fazla 25 MB (PDF, PPTX, DOCX, ZIP, görsel) yüklenir.`
+                    : 'Demo Modu aktif (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY tanımlı değil) — en fazla 1.5 MB tarayıcıda (localStorage) saklanır; büyük dosyalar için Harici Link kullanabilirsiniz.'}
                 </span>
               )}
             </div>

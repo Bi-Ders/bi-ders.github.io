@@ -19,6 +19,7 @@ import {
   deleteBook,
   deleteUploadedFile,
   getBooks,
+  getUploadApiUrl,
   isR2UploadConfigured,
   updateBook,
   uploadFile,
@@ -78,6 +79,7 @@ export function BookManager({
   const [success, setSuccess] = useState<{ text: string; slug?: string } | null>(null)
 
   const r2Enabled = isR2UploadConfigured()
+  const uploadApiUrl = getUploadApiUrl()
   const books = useAsync(() => getBooks(), [])
 
   const resetForm = () => {
@@ -538,8 +540,8 @@ export function BookManager({
                 </div>
                 <p className="mt-2 text-[11px] text-muted">
                   {r2Enabled
-                    ? 'Cloudflare R2’ye en fazla 25 MB PDF yüklenebilir; boş bırakılırsa otomatik örnek okuyucu açılır.'
-                    : 'Boş bırakılsa bile detay sayfasında otomatik örnek sayfa okuyucu oluşturulur.'}
+                    ? `Cloudflare R2 (${uploadApiUrl}) üzerinden en fazla 25 MB PDF yüklenir; boş bırakılırsa otomatik örnek okuyucu açılır.`
+                    : 'Demo Modu aktif (Supabase env tanımlı değil) — dosya tarayıcıda saklanır; boş bırakılsa bile otomatik örnek sayfa okuyucu oluşturulur.'}
                 </p>
               </div>
             </div>

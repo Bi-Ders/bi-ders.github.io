@@ -75,7 +75,11 @@ export function AdminPage() {
   return (
     <div>
       <PageHeader
-        eyebrow={isDemo ? 'Yönetim Paneli · Demo Modu (localStorage Kalıcı)' : 'Yönetim Paneli'}
+        eyebrow={
+          isDemo
+            ? 'Yönetim Paneli · Demo Modu (localStorage Kalıcı)'
+            : 'Yönetim Paneli · Supabase + Cloudflare R2 Canlı'
+        }
         title="İçerik, modül ve mağaza yönetimi"
         description={
           isAdmin

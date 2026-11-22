@@ -59,9 +59,44 @@ const demoDelay = (ms = 220 + Math.random() * 200) => new Promise((r) => setTime
 
 const AUTHOR = 'author:profiles(id, full_name, avatar_url, role)'
 const CATEGORY = 'category:categories(*)'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function fail(error: { message: string } | null): never | void {
-  if (error) throw new Error(error.message)
+function isUuid(value: string | null | undefined): value is string {
+  return Boolean(value && UUID_RE.test(value))
+}
+
+function toUuidOrNull(value: string | null | undefined): string | null {
+  return isUuid(value) ? value : null
+}
+
+function makeSafeSlug(title: string, fallbackPrefix = 'icerik'): string {
+  const raw = slugify(title)
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  const base = (raw.length >= 2 ? raw : fallbackPrefix).slice(0, 200).replace(/-+$/, '')
+  const suffix = Math.random().toString(36).slice(2, 8).padEnd(4, '0')
+  return `${base || fallbackPrefix}-${suffix}`
+}
+
+async function requireSupabaseUserId(fallbackId?: string | null): Promise<string> {
+  if (!supabase) return fallbackId ?? 'admin'
+  const { data } = await supabase.auth.getSession()
+  const uid = data.session?.user?.id ?? (isUuid(fallbackId) ? fallbackId : null)
+  if (!uid) {
+    throw new Error('Bu işlem için geçerli bir öğretmen veya yönetici oturumu ile giriş yapmalısınız.')
+  }
+  return uid
+}
+
+function fail(error: { message: string; code?: string } | null): never | void {
+  if (!error) return
+  if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+    throw new Error(
+      'Bu işlem için yetkiniz yok. Öğretmen veya yönetici rolüne sahip bir hesapla giriş yaptığınızdan emin olun.',
+    )
+  }
+  throw new Error(error.message)
 }
 
 /** Demo modunda yapılan değişiklikleri tarayıcıda (localStorage) saklar */
@@ -96,6 +131,8 @@ const demoStore = {
 // Dosya Yükleme & Silme Katmanı (Cloudflare R2 Worker / Demo Modu)
 // ---------------------------------------------------------------
 export const MAX_R2_UPLOAD_BYTES = 25 * 1024 * 1024 // 25 MB
+/** Canlı (Supabase bağlı) ortamlarda VITE_UPLOAD_API_URL boşsa kullanılan varsayılan R2 Worker adresi */
+export const DEFAULT_UPLOAD_API_URL = 'https://upload.biders.org'
 
 export type UploadedFileResult = {
   url: string
@@ -106,18 +143,28 @@ export type UploadedFileResult = {
   provider: 'r2' | 'demo'
 }
 
-function getUploadApiUrl(): string {
+/**
+ * Aktif Cloudflare R2 Worker adresini döner.
+ * - Demo Modu'nda (Supabase bağlı değilken) boş string döner (JWT olmadığı için R2 çağrılmaz).
+ * - Canlı modda önce VITE_UPLOAD_API_URL, boşsa DEFAULT_UPLOAD_API_URL (https://upload.biders.org) kullanılır.
+ */
+export function getUploadApiUrl(): string {
+  if (!supabase) return ''
   const raw = (import.meta.env.VITE_UPLOAD_API_URL ?? '').trim().replace(/\/$/, '')
-  if (!raw) return ''
-  try {
-    const parsed = new URL(raw)
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString().replace(/\/$/, '') : ''
-  } catch {
-    return ''
+  if (raw) {
+    try {
+      const parsed = new URL(raw)
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return parsed.toString().replace(/\/$/, '')
+      }
+    } catch {
+      /* geçersiz URL ise varsayılan üretim Worker adresine düş */
+    }
   }
+  return DEFAULT_UPLOAD_API_URL
 }
 
-/** Cloudflare R2 Worker (VITE_UPLOAD_API_URL) yapılandırılmış mı? */
+/** Gerçek sunucu (Cloudflare R2 Worker) dosya yüklemesi etkin mi? */
 export function isR2UploadConfigured(): boolean {
   return Boolean(getUploadApiUrl())
 }
@@ -146,14 +193,24 @@ function fileToDataUrl(file: File, maxBytes: number): Promise<string> {
 async function getSupabaseAccessToken(): Promise<string | null> {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
+  const session = data.session
+  if (!session) return null
+
+  const expiresAt = session.expires_at ?? 0
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (!session.access_token || (expiresAt > 0 && expiresAt - nowSec < 60)) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    return refreshed.session?.access_token ?? session.access_token ?? null
+  }
+  return session.access_token
 }
 
 /**
  * Dosyayı yükler:
  * - Görsel dosyaları (image/*) varsayılan olarak fileHelpers.ts ile WebP'ye sıkıştırılır.
- * - VITE_UPLOAD_API_URL tanımlıysa Cloudflare R2 Worker'a (FormData + Supabase access_token) gönderir.
- * - Tanımlı değilse mevcut Demo Modu davranışını (Data URL) korur.
+ * - Canlı modda (Supabase yapılandırılmışsa) HER ZAMAN Cloudflare R2 Worker'a (POST /upload + Bearer token) gönderir;
+ *   asla sessizce localStorage / Data URL'ye düşmez.
+ * - Yalnızca Demo Modu'nda (!supabase) tarayıcı içi Data URL olarak saklanır.
  */
 export async function uploadFile(
   file: File,
@@ -166,7 +223,7 @@ export async function uploadFile(
 
   const uploadApiUrl = getUploadApiUrl()
 
-  if (!uploadApiUrl) {
+  if (!supabase || !uploadApiUrl) {
     const url = await fileToDataUrl(prepared, options.maxDemoBytes ?? 1_500_000)
     return {
       url,
@@ -193,13 +250,21 @@ export async function uploadFile(
     formData.append('folder', options.folder)
   }
 
-  const response = await fetch(`${uploadApiUrl}/upload`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: formData,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${uploadApiUrl}/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    })
+  } catch {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    throw new Error(
+      `Yükleme sunucusuna (${uploadApiUrl}/upload) ulaşılamadı. Cloudflare R2 Worker yayında mı ve bu alan adı (${origin}) CORS listesinde izinli mi kontrol edin.`,
+    )
+  }
 
   const payload = (await response.json().catch(() => ({}))) as {
     url?: string
@@ -246,14 +311,20 @@ export async function deleteUploadedFile(
   }
 
   const isUrl = /^https?:\/\//i.test(trimmed)
-  const response = await fetch(`${uploadApiUrl}/delete`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(isUrl ? { url: trimmed } : { key: trimmed }),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${uploadApiUrl}/delete`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(isUrl ? { url: trimmed } : { key: trimmed }),
+    })
+  } catch {
+    if (options.silent) return false
+    throw new Error(`Dosya silme sunucusuna (${uploadApiUrl}/delete) ulaşılamadı.`)
+  }
 
   if (!response.ok) {
     if (options.silent) return false
@@ -401,6 +472,164 @@ const MODULE_GRADIENTS: Record<ResourceModuleKey, string> = {
   evraklar: 'from-teal-700 via-emerald-700 to-green-600',
 }
 
+const RESOURCE_MODULE_KEYS: ResourceModuleKey[] = [
+  'sunular',
+  'ders-notlari',
+  'yazililar',
+  'sinavlar',
+  'evraklar',
+]
+const MODULE_TAG_PREFIX = 'module:'
+const FORMAT_TAG_PREFIX = 'format:'
+const ACTIVITY_MODULE_TAG = 'module:etkinlikler'
+const RESOURCE_MODULE_TAGS = RESOURCE_MODULE_KEYS.map((m) => `${MODULE_TAG_PREFIX}${m}`)
+const ALL_MODULE_TAGS = [...RESOURCE_MODULE_TAGS, ACTIVITY_MODULE_TAG]
+
+type StoredResourcePayload = {
+  __biders_resource: 1
+  module: ResourceModuleKey
+  unit: string
+  format: DocumentFormat
+  file_size: string
+  page_count: number
+  preview_sections: ResourcePreviewSection[]
+}
+
+type StoredActivityPayload = {
+  __biders_activity: 1
+  kind: ActivityKind
+  provider: ActivityProvider
+  unit: string
+  duration_minutes: number
+  gradient: string
+}
+
+function isResourceModuleKey(value: unknown): value is ResourceModuleKey {
+  return typeof value === 'string' && (RESOURCE_MODULE_KEYS as string[]).includes(value)
+}
+
+function parseDocumentFormat(value: unknown, fileUrl?: string | null): DocumentFormat {
+  if (value === 'PDF' || value === 'PPTX' || value === 'DOCX') return value
+  const lower = (fileUrl ?? '').toLowerCase()
+  if (lower.endsWith('.pptx') || lower.endsWith('.ppt')) return 'PPTX'
+  if (lower.endsWith('.docx') || lower.endsWith('.doc')) return 'DOCX'
+  return 'PDF'
+}
+
+function parseJsonBody<T extends Record<string, unknown>>(body: string | null | undefined): T | null {
+  if (!body) return null
+  const trimmed = body.trim()
+  if (!trimmed.startsWith('{')) return null
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as T) : null
+  } catch {
+    return null
+  }
+}
+
+function contentRowToModuleResource(row: Content, fallbackModule?: ResourceModuleKey): ModuleResource {
+  const meta = parseJsonBody<Partial<StoredResourcePayload>>(row.body)
+  const rawTags = Array.isArray(row.tags) ? row.tags : []
+
+  const moduleFromTag = rawTags
+    .find((t) => t.startsWith(MODULE_TAG_PREFIX))
+    ?.slice(MODULE_TAG_PREFIX.length)
+  const formatFromTag = rawTags
+    .find((t) => t.startsWith(FORMAT_TAG_PREFIX))
+    ?.slice(FORMAT_TAG_PREFIX.length)
+
+  const mod: ResourceModuleKey = isResourceModuleKey(meta?.module)
+    ? meta.module
+    : isResourceModuleKey(moduleFromTag)
+      ? moduleFromTag
+      : (fallbackModule ?? 'ders-notlari')
+
+  const unit = typeof meta?.unit === 'string' && meta.unit.trim() ? meta.unit.trim() : 'Genel'
+  const format = parseDocumentFormat(meta?.format ?? formatFromTag, row.file_url)
+  const fileSize = typeof meta?.file_size === 'string' && meta.file_size.trim() ? meta.file_size.trim() : '—'
+  const pageCount = Math.max(1, Math.round(Number(meta?.page_count) || 1))
+  const summary = row.summary?.trim() || 'Yönetim panelinden eklenen güncel eğitim materyali.'
+
+  const rawSections = Array.isArray(meta?.preview_sections) ? meta.preview_sections : []
+  const validSections: ResourcePreviewSection[] = rawSections
+    .filter((s): s is ResourcePreviewSection => Boolean(s && typeof s.heading === 'string' && typeof s.content === 'string'))
+    .map((s) => ({
+      heading: s.heading,
+      content: s.content,
+      ...(Array.isArray(s.items) ? { items: s.items.map(String) } : {}),
+    }))
+
+  const previewSections: ResourcePreviewSection[] = validSections.length
+    ? validSections
+    : [
+        {
+          heading: `${unit} — İçerik Özeti`,
+          content: (!meta && row.body?.trim()) || summary,
+        },
+      ]
+
+  const cleanTags = rawTags.filter((t) => !t.startsWith(MODULE_TAG_PREFIX) && !t.startsWith(FORMAT_TAG_PREFIX))
+
+  return {
+    id: row.id,
+    module: mod,
+    title: row.title,
+    summary,
+    grade: row.grade?.trim() || 'Genel',
+    category_id: row.category_id ?? null,
+    category: row.category ?? null,
+    unit,
+    format,
+    file_size: fileSize,
+    page_count: pageCount,
+    download_count: row.view_count ?? 0,
+    gradient: MODULE_GRADIENTS[mod],
+    file_url: row.file_url ?? null,
+    preview_sections: previewSections,
+    tags: cleanTags,
+    author: row.author ?? null,
+    published_at: row.published_at ?? row.created_at,
+  }
+}
+
+function contentRowToActivity(row: Content): InteractiveActivity {
+  const meta = parseJsonBody<Partial<StoredActivityPayload>>(row.body)
+  const kind: ActivityKind = meta?.kind === 'game' ? 'game' : 'activity'
+  const provider: ActivityProvider =
+    meta?.provider === 'wordwall' || meta?.provider === 'h5p' || meta?.provider === 'html5'
+      ? meta.provider
+      : 'html5'
+  const unit = typeof meta?.unit === 'string' && meta.unit.trim() ? meta.unit.trim() : 'Genel'
+  const durationMinutes = Math.max(1, Math.round(Number(meta?.duration_minutes) || 5))
+  const gradient =
+    typeof meta?.gradient === 'string' && meta.gradient.trim()
+      ? meta.gradient
+      : kind === 'game'
+        ? 'from-fuchsia-600 via-purple-600 to-indigo-600'
+        : 'from-cyan-600 via-blue-600 to-indigo-600'
+  const cleanTags = (Array.isArray(row.tags) ? row.tags : []).filter((t) => !t.startsWith(MODULE_TAG_PREFIX))
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.summary?.trim() || 'Harici güvenli iframe embed etkinliği.',
+    kind,
+    provider,
+    grade: row.grade?.trim() || 'Genel',
+    category_id: row.category_id ?? null,
+    category: row.category ?? null,
+    unit,
+    duration_minutes: durationMinutes,
+    play_count: row.view_count ?? 0,
+    gradient,
+    embed_url: row.file_url ?? null,
+    tags: cleanTags,
+    author: row.author ?? null,
+    created_at: row.created_at,
+  }
+}
+
 // ---------------------------------------------------------------
 // Kategoriler
 // ---------------------------------------------------------------
@@ -431,6 +660,7 @@ export async function getContents({ limit, query, categorySlug }: ListOptions = 
     .from('contents')
     .select(`*, ${AUTHOR}, ${categorySlug ? 'category:categories!inner(*)' : CATEGORY}`)
     .eq('status', 'published')
+    .not('tags', 'ov', `{${ALL_MODULE_TAGS.join(',')}}`)
     .order('published_at', { ascending: false })
   if (categorySlug) q = q.eq('category.slug', categorySlug)
   if (query) q = q.textSearch('search_vector', query, { type: 'websearch', config: 'turkish' })
@@ -507,21 +737,24 @@ export async function createContent(input: CreateContentInput, author: AuthorSum
     return created
   }
 
-  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+  const authorId = await requireSupabaseUserId(author.id)
+  const cleanTags = input.tags
+    .map((t) => t.trim())
+    .filter((t) => t && !t.startsWith(MODULE_TAG_PREFIX) && !t.startsWith(FORMAT_TAG_PREFIX))
   const { data, error } = await supabase
     .from('contents')
     .insert({
-      author_id: author.id,
-      category_id: input.category_id,
-      title,
-      slug,
-      summary: input.summary.trim() || null,
+      author_id: authorId,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      slug: makeSafeSlug(title, 'ders'),
+      summary: input.summary.trim().slice(0, 500) || null,
       body: input.body.trim() || null,
       type: input.type,
       status: 'published',
       grade: input.grade.trim() || null,
       file_url: input.file_url?.trim() || null,
-      tags: input.tags,
+      tags: cleanTags,
     })
     .select(`*, ${AUTHOR}, ${CATEGORY}`)
     .single()
@@ -566,8 +799,22 @@ export async function getModuleResources(
   module: ResourceModuleKey,
   { grade, categorySlug, unit, query }: ResourceFilterOptions = {},
 ): Promise<{ items: ModuleResource[]; grades: string[]; units: string[] }> {
-  await demoDelay(180)
-  const base = getMergedDemoResources().filter((r) => r.module === module)
+  let base: ModuleResource[]
+
+  if (!supabase) {
+    await demoDelay(180)
+    base = getMergedDemoResources().filter((r) => r.module === module)
+  } else {
+    const { data, error } = await supabase
+      .from('contents')
+      .select(`*, ${AUTHOR}, ${CATEGORY}`)
+      .eq('status', 'published')
+      .contains('tags', [`${MODULE_TAG_PREFIX}${module}`])
+      .order('published_at', { ascending: false })
+      .limit(200)
+    fail(error)
+    base = ((data ?? []) as unknown as Content[]).map((row) => contentRowToModuleResource(row, module))
+  }
 
   const grades = Array.from(new Set(base.map((r) => r.grade)))
   const unitSource = base.filter(
@@ -589,9 +836,26 @@ export async function getModuleResources(
 }
 
 export async function getAllModuleResources(module?: ResourceModuleKey): Promise<ModuleResource[]> {
-  await demoDelay(140)
-  const all = getMergedDemoResources()
-  return module ? all.filter((r) => r.module === module) : all
+  if (!supabase) {
+    await demoDelay(140)
+    const all = getMergedDemoResources()
+    return module ? all.filter((r) => r.module === module) : all
+  }
+
+  let q = supabase
+    .from('contents')
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .order('published_at', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  q = module
+    ? q.contains('tags', [`${MODULE_TAG_PREFIX}${module}`])
+    : q.overlaps('tags', RESOURCE_MODULE_TAGS)
+
+  const { data, error } = await q
+  fail(error)
+  return ((data ?? []) as unknown as Content[]).map((row) => contentRowToModuleResource(row, module))
 }
 
 export type CreateModuleResourceInput = {
@@ -616,8 +880,8 @@ export async function createModuleResource(
   const title = input.title.trim()
   if (title.length < 3) throw new Error('Doküman başlığı en az 3 karakter olmalıdır.')
 
-  await demoDelay(180)
-  const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+  const cleanUnit = input.unit.trim() || 'Genel'
+  const cleanSummary = (input.summary.trim() || 'Yönetim panelinden eklenen güncel eğitim materyali.').slice(0, 500)
   const previewText = input.preview_content?.trim()
   const previewSections: ResourcePreviewSection[] = previewText
     ? [
@@ -628,48 +892,108 @@ export async function createModuleResource(
       ]
     : [
         {
-          heading: `${input.unit.trim() || 'Genel'} — İçerik Özeti`,
+          heading: `${cleanUnit} — İçerik Özeti`,
           content: input.summary.trim() || 'Yönetim panelinden eklenen güncel eğitim dokümanı.',
         },
       ]
 
-  const created: ModuleResource = {
-    id: `res-custom-${crypto.randomUUID()}`,
+  if (!supabase) {
+    await demoDelay(180)
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const created: ModuleResource = {
+      id: `res-custom-${crypto.randomUUID()}`,
+      module: input.module,
+      title,
+      summary: cleanSummary,
+      grade: input.grade.trim() || 'Genel',
+      category_id: category?.id ?? null,
+      category,
+      unit: cleanUnit,
+      format: input.format,
+      file_size: input.file_size.trim() || '1.0 MB',
+      page_count: Math.max(1, Math.round(input.page_count || 1)),
+      download_count: 1,
+      gradient: MODULE_GRADIENTS[input.module],
+      file_url: input.file_url?.trim() || null,
+      preview_sections: previewSections,
+      tags: input.tags,
+      author,
+      published_at: new Date().toISOString(),
+    }
+
+    const existing = demoStore.get<ModuleResource[]>('custom_resources', [])
+    demoStore.setStrict('custom_resources', [created, ...existing])
+    return created
+  }
+
+  const authorId = await requireSupabaseUserId(author?.id)
+  const payload: StoredResourcePayload = {
+    __biders_resource: 1,
     module: input.module,
-    title,
-    summary: input.summary.trim() || 'Yönetim panelinden eklenen güncel eğitim materyali.',
-    grade: input.grade.trim() || 'Genel',
-    category_id: category?.id ?? null,
-    category,
-    unit: input.unit.trim() || 'Genel',
+    unit: cleanUnit,
     format: input.format,
     file_size: input.file_size.trim() || '1.0 MB',
     page_count: Math.max(1, Math.round(input.page_count || 1)),
-    download_count: 1,
-    gradient: MODULE_GRADIENTS[input.module],
-    file_url: input.file_url?.trim() || null,
     preview_sections: previewSections,
-    tags: input.tags,
-    author,
-    published_at: new Date().toISOString(),
   }
+  const userTags = input.tags
+    .map((t) => t.trim())
+    .filter((t) => t && !t.startsWith(MODULE_TAG_PREFIX) && !t.startsWith(FORMAT_TAG_PREFIX))
+  const dbTags = Array.from(
+    new Set([`${MODULE_TAG_PREFIX}${input.module}`, `${FORMAT_TAG_PREFIX}${input.format}`, ...userTags]),
+  )
 
-  const existing = demoStore.get<ModuleResource[]>('custom_resources', [])
-  demoStore.setStrict('custom_resources', [created, ...existing])
-  return created
+  const { data, error } = await supabase
+    .from('contents')
+    .insert({
+      author_id: authorId,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      slug: makeSafeSlug(title, input.module),
+      summary: cleanSummary,
+      body: JSON.stringify(payload),
+      type: 'document',
+      status: 'published',
+      grade: input.grade.trim() || 'Genel',
+      file_url: input.file_url?.trim() || null,
+      tags: dbTags,
+    })
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .single()
+  fail(error)
+  return contentRowToModuleResource(data as unknown as Content, input.module)
 }
 
 export async function deleteModuleResource(resourceId: string): Promise<void> {
-  await demoDelay(140)
-  const target = getMergedDemoResources().find((r) => r.id === resourceId)
-  const deleted = demoStore.get<string[]>('deleted_resources', [])
-  if (!deleted.includes(resourceId)) {
-    demoStore.set('deleted_resources', [...deleted, resourceId])
+  if (!supabase) {
+    await demoDelay(140)
+    const target = getMergedDemoResources().find((r) => r.id === resourceId)
+    const deleted = demoStore.get<string[]>('deleted_resources', [])
+    if (!deleted.includes(resourceId)) {
+      demoStore.set('deleted_resources', [...deleted, resourceId])
+    }
+    if (target?.file_url) void deleteUploadedFile(target.file_url, { silent: true })
+    return
   }
-  if (target?.file_url) void deleteUploadedFile(target.file_url, { silent: true })
+
+  const { data, error } = await supabase
+    .from('contents')
+    .delete()
+    .eq('id', resourceId)
+    .select('file_url, cover_url')
+    .maybeSingle()
+  fail(error)
+  if (data?.file_url) void deleteUploadedFile(String(data.file_url), { silent: true })
+  if (data?.cover_url) void deleteUploadedFile(String(data.cover_url), { silent: true })
 }
 
-export function recordResourceDownload(resourceId: string): number {
+export function recordResourceDownload(resourceId: string, currentCount?: number): number {
+  if (supabase) {
+    if (isUuid(resourceId)) {
+      void supabase.rpc('increment_view', { p_table: 'contents', p_id: resourceId })
+    }
+    return (currentCount ?? 0) + 1
+  }
   const offsets = demoStore.get<Record<string, number>>('resource_downloads', {})
   offsets[resourceId] = (offsets[resourceId] ?? 0) + 1
   demoStore.set('resource_downloads', offsets)
@@ -694,8 +1018,22 @@ export async function getInteractiveActivities({
   categorySlug,
   query,
 }: ActivityFilterOptions = {}): Promise<{ items: InteractiveActivity[]; grades: string[] }> {
-  await demoDelay(180)
-  const all = getMergedDemoActivities()
+  let all: InteractiveActivity[]
+
+  if (!supabase) {
+    await demoDelay(180)
+    all = getMergedDemoActivities()
+  } else {
+    const { data, error } = await supabase
+      .from('contents')
+      .select(`*, ${AUTHOR}, ${CATEGORY}`)
+      .eq('status', 'published')
+      .contains('tags', [ACTIVITY_MODULE_TAG])
+      .order('created_at', { ascending: false })
+      .limit(200)
+    fail(error)
+    all = ((data ?? []) as unknown as Content[]).map(contentRowToActivity)
+  }
 
   const grades = Array.from(new Set(all.map((a) => a.grade)))
 
@@ -712,7 +1050,13 @@ export async function getInteractiveActivities({
   return { items: filtered, grades }
 }
 
-export function recordActivityPlay(activityId: string): number {
+export function recordActivityPlay(activityId: string, currentCount?: number): number {
+  if (supabase) {
+    if (isUuid(activityId)) {
+      void supabase.rpc('increment_view', { p_table: 'contents', p_id: activityId })
+    }
+    return (currentCount ?? 0) + 1
+  }
   const offsets = demoStore.get<Record<string, number>>('activity_plays', {})
   offsets[activityId] = (offsets[activityId] ?? 0) + 1
   demoStore.set('activity_plays', offsets)
@@ -738,40 +1082,90 @@ export async function createCustomActivity(
   input: CustomActivityInput,
   author: AuthorSummary | null,
 ): Promise<InteractiveActivity> {
-  await demoDelay(200)
-  const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
-  const created: InteractiveActivity = {
-    id: `act-custom-${crypto.randomUUID()}`,
-    title: input.title.trim(),
-    description: input.description.trim() || 'Harici güvenli iframe embed etkinliği.',
+  const title = input.title.trim()
+  if (title.length < 3) throw new Error('Etkinlik başlığı en az 3 karakter olmalıdır.')
+
+  const cleanDescription = (input.description.trim() || 'Harici güvenli iframe embed etkinliği.').slice(0, 500)
+  const cleanUnit = input.unit.trim() || 'Genel'
+  const durationMinutes = Math.max(1, Math.round(input.duration_minutes || 5))
+  const gradient =
+    input.kind === 'game'
+      ? 'from-fuchsia-600 via-purple-600 to-indigo-600'
+      : 'from-cyan-600 via-blue-600 to-indigo-600'
+  const cleanTags = input.tags?.length
+    ? input.tags.map((t) => t.trim()).filter((t) => t && !t.startsWith(MODULE_TAG_PREFIX))
+    : [input.provider, input.kind === 'game' ? 'oyun' : 'etkinlik']
+
+  if (!supabase) {
+    await demoDelay(200)
+    const category = input.category_id ? mockCategories.find((c) => c.id === input.category_id) ?? null : null
+    const created: InteractiveActivity = {
+      id: `act-custom-${crypto.randomUUID()}`,
+      title,
+      description: cleanDescription,
+      kind: input.kind,
+      provider: input.provider,
+      grade: input.grade.trim() || 'Genel',
+      category_id: category?.id ?? null,
+      category,
+      unit: cleanUnit,
+      duration_minutes: durationMinutes,
+      play_count: 1,
+      gradient,
+      embed_url: input.embed_url,
+      tags: cleanTags,
+      author,
+      created_at: new Date().toISOString(),
+    }
+    const existing = demoStore.get<InteractiveActivity[]>('custom_activities', [])
+    demoStore.setStrict('custom_activities', [created, ...existing])
+    return created
+  }
+
+  const authorId = await requireSupabaseUserId(author?.id)
+  const payload: StoredActivityPayload = {
+    __biders_activity: 1,
     kind: input.kind,
     provider: input.provider,
-    grade: input.grade.trim() || 'Genel',
-    category_id: category?.id ?? null,
-    category,
-    unit: input.unit.trim() || 'Genel',
-    duration_minutes: Math.max(1, Math.round(input.duration_minutes || 5)),
-    play_count: 1,
-    gradient:
-      input.kind === 'game'
-        ? 'from-fuchsia-600 via-purple-600 to-indigo-600'
-        : 'from-cyan-600 via-blue-600 to-indigo-600',
-    embed_url: input.embed_url,
-    tags: input.tags?.length ? input.tags : [input.provider, input.kind === 'game' ? 'oyun' : 'etkinlik'],
-    author,
-    created_at: new Date().toISOString(),
+    unit: cleanUnit,
+    duration_minutes: durationMinutes,
+    gradient,
   }
-  const existing = demoStore.get<InteractiveActivity[]>('custom_activities', [])
-  demoStore.setStrict('custom_activities', [created, ...existing])
-  return created
+  const dbTags = Array.from(new Set([ACTIVITY_MODULE_TAG, ...cleanTags]))
+
+  const { data, error } = await supabase
+    .from('contents')
+    .insert({
+      author_id: authorId,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      slug: makeSafeSlug(title, 'etkinlik'),
+      summary: cleanDescription,
+      body: JSON.stringify(payload),
+      type: 'article',
+      status: 'published',
+      grade: input.grade.trim() || 'Genel',
+      file_url: input.embed_url,
+      tags: dbTags,
+    })
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .single()
+  fail(error)
+  return contentRowToActivity(data as unknown as Content)
 }
 
 export async function deleteActivity(activityId: string): Promise<void> {
-  await demoDelay(140)
-  const deleted = demoStore.get<string[]>('deleted_activities', [])
-  if (!deleted.includes(activityId)) {
-    demoStore.set('deleted_activities', [...deleted, activityId])
+  if (!supabase) {
+    await demoDelay(140)
+    const deleted = demoStore.get<string[]>('deleted_activities', [])
+    if (!deleted.includes(activityId)) {
+      demoStore.set('deleted_activities', [...deleted, activityId])
+    }
+    return
   }
+
+  const { error } = await supabase.from('contents').delete().eq('id', activityId)
+  fail(error)
 }
 
 // ---------------------------------------------------------------
@@ -1159,15 +1553,15 @@ export async function createQuiz(input: CreateQuizInput, author: AuthorSummary):
     return created
   }
 
-  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+  const authorId = await requireSupabaseUserId(author.id)
   const { data: quizData, error: qErr } = await supabase
     .from('quizzes')
     .insert({
-      author_id: author.id,
-      category_id: input.category_id,
-      title,
-      slug,
-      description: input.description.trim() || null,
+      author_id: authorId,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      slug: makeSafeSlug(title, 'test'),
+      description: input.description.trim().slice(0, 1000) || null,
       grade: input.grade.trim() || null,
       difficulty: input.difficulty,
       time_limit_minutes: Math.max(1, Math.min(300, Math.round(input.time_limit_minutes || 10))),
@@ -1417,16 +1811,17 @@ export async function createBook(input: BookInput, addedBy: string | null): Prom
     return created
   }
 
+  const ownerId = await requireSupabaseUserId(addedBy)
   const { data, error } = await supabase
     .from('books')
     .insert({
-      added_by: addedBy,
-      category_id: input.category_id,
-      title,
-      author: input.author.trim() || null,
-      publisher: input.publisher.trim() || null,
+      added_by: ownerId,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      author: input.author.trim().slice(0, 200) || null,
+      publisher: input.publisher.trim().slice(0, 200) || null,
       isbn: input.isbn?.trim() || null,
-      description: input.description.trim() || null,
+      description: input.description.trim().slice(0, 3000) || null,
       grade: input.grade.trim() || null,
       cover_url: input.cover_url?.trim() || null,
       file_url: input.file_url?.trim() || null,
@@ -1494,12 +1889,12 @@ export async function updateBook(bookId: string, input: BookInput): Promise<Book
   const { data, error } = await supabase
     .from('books')
     .update({
-      category_id: input.category_id,
-      title,
-      author: input.author.trim() || null,
-      publisher: input.publisher.trim() || null,
+      category_id: toUuidOrNull(input.category_id),
+      title: title.slice(0, 200),
+      author: input.author.trim().slice(0, 200) || null,
+      publisher: input.publisher.trim().slice(0, 200) || null,
       isbn: input.isbn?.trim() || null,
-      description: input.description.trim() || null,
+      description: input.description.trim().slice(0, 3000) || null,
       grade: input.grade.trim() || null,
       cover_url: input.cover_url?.trim() || null,
       file_url: input.file_url?.trim() || null,
@@ -1736,15 +2131,30 @@ export async function getAdminStats(): Promise<AdminStats> {
     const { count: c } = await q
     return c ?? 0
   }
-  const [users, contents, topics, quizzes, books, newMessages] = await Promise.all([
+  const countNonActivityContents = async () => {
+    const { count: c } = await supabase!
+      .from('contents')
+      .select('id', { count: 'exact', head: true })
+      .not('tags', 'cs', `{${ACTIVITY_MODULE_TAG}}`)
+    return c ?? 0
+  }
+  const countActivities = async () => {
+    const { count: c } = await supabase!
+      .from('contents')
+      .select('id', { count: 'exact', head: true })
+      .contains('tags', [ACTIVITY_MODULE_TAG])
+    return c ?? 0
+  }
+  const [users, contents, topics, quizzes, activities, books, newMessages] = await Promise.all([
     count('profiles'),
-    count('contents'),
+    countNonActivityContents(),
     count('forum_topics'),
     count('quizzes'),
+    countActivities(),
     count('books'),
     count('contact_messages', ['status', 'new']),
   ])
-  return { users, contents, topics, quizzes, activities: getMergedDemoActivities().length, books, newMessages }
+  return { users, contents, topics, quizzes, activities, books, newMessages }
 }
 
 export async function getContactMessages(): Promise<ContactMessage[]> {
@@ -1786,7 +2196,12 @@ export async function getManagedContents(authorId: string, isAdmin: boolean): Pr
     const all = getMergedDemoContents()
     return isAdmin ? all : all.filter((c) => c.author_id === authorId)
   }
-  let q = supabase.from('contents').select(`*, ${AUTHOR}, ${CATEGORY}`).order('created_at', { ascending: false }).limit(50)
+  let q = supabase
+    .from('contents')
+    .select(`*, ${AUTHOR}, ${CATEGORY}`)
+    .not('tags', 'ov', `{${ALL_MODULE_TAGS.join(',')}}`)
+    .order('created_at', { ascending: false })
+    .limit(50)
   if (!isAdmin) q = q.eq('author_id', authorId)
   const { data, error } = await q
   fail(error)

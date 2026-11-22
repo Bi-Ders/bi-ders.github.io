@@ -29,7 +29,12 @@ const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
 const MAX_REQUEST_CONTENT_LENGTH = MAX_FILE_SIZE_BYTES + 1024 * 1024 // 26 MB (multipart üstbilgi payı)
 const DEFAULT_MAX_BUCKET_SIZE_BYTES = 8 * 1000 * 1000 * 1000 // 8 GB (10 GB ücretsiz kota için güvenlik tamponu)
 const MAX_BUCKET_LIST_PAGES = 200
-const DEFAULT_ALLOWED_ORIGINS = ['https://biders.org', 'http://localhost:5173']
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://biders.org',
+  'https://www.biders.org',
+  'https://bi-ders.github.io',
+  'http://localhost:5173',
+]
 
 type AllowedFileSpec = {
   ext: 'webp' | 'png' | 'jpg' | 'pdf' | 'pptx' | 'docx' | 'zip'
@@ -61,7 +66,7 @@ const ALLOWED_BY_EXT: Record<string, AllowedFileSpec> = {
   pdf: {
     ext: 'pdf',
     contentType: 'application/pdf',
-    acceptedMimes: new Set(['application/pdf']),
+    acceptedMimes: new Set(['application/pdf', 'application/x-pdf', 'application/octet-stream']),
   },
   pptx: {
     ext: 'pptx',

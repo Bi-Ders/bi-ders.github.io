@@ -77,7 +77,8 @@ export function ActivitiesPage() {
   const hasFilters = Boolean(kind || grade || categorySlug || query)
 
   const openPlayer = (item: InteractiveActivity) => {
-    const updated = recordActivityPlay(item.id)
+    const currentCount = playCounts[item.id] ?? item.play_count
+    const updated = recordActivityPlay(item.id, currentCount)
     setPlayCounts((prev) => ({ ...prev, [item.id]: updated }))
     setActiveItem(item)
   }
