@@ -144,7 +144,7 @@ export function QuizzesPage() {
                       <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold backdrop-blur-xs">
                         {q.grade ?? 'Genel'}
                       </span>
-                      <span className="rounded-md bg-ink/80 px-2 py-0.5 text-[11px] font-extrabold">
+                      <span className="rounded-md bg-[#12204a]/80 px-2 py-0.5 text-[11px] font-extrabold text-[#f9f7f0]">
                         {difficultyLabels[q.difficulty]}
                       </span>
                     </div>

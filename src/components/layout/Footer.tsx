@@ -17,13 +17,13 @@ export function Footer() {
   ]
 
   return (
-    <footer className="mt-24 border-t border-ink bg-ink text-paper">
+    <footer className="mt-24 border-t border-[#12204a] bg-[#12204a] text-[#f9f7f0] dark:border-line dark:bg-[#0d1838]">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-12">
         <div className="lg:col-span-4">
-          <div className="inline-flex rounded-xl bg-paper px-3 py-2">
+          <div className="inline-flex rounded-xl bg-[#faf7f0] px-3 py-2 dark:border dark:border-line dark:bg-[#192b5e]">
             <Logo />
           </div>
-          <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-paper/80">{siteConfig.description}</p>
+          <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-[#f9f7f0]/80">{siteConfig.description}</p>
           <ul className="mt-6 flex gap-2" aria-label="Sosyal medya">
             {siteConfig.social.map((s) => (
               <li key={s.platform}>
@@ -33,7 +33,7 @@ export function Footer() {
                   rel="noopener noreferrer"
                   aria-label={s.label}
                   title={s.label}
-                  className="grid size-10 place-items-center rounded-xl border border-paper/20 text-paper/90 transition hover:border-sun hover:bg-sun hover:text-ink"
+                  className="grid size-10 place-items-center rounded-xl border border-[#f9f7f0]/20 text-[#f9f7f0]/90 transition hover:border-sun hover:bg-sun hover:text-[#12204a]"
                 >
                   <SocialIcon platform={s.platform} />
                 </a>
@@ -47,7 +47,7 @@ export function Footer() {
 
         <div className="lg:col-span-3">
           <h2 className="font-display text-sm font-bold tracking-[0.12em] text-sun uppercase">İletişim</h2>
-          <ul className="mt-4 space-y-3 text-[15px] text-paper/85">
+          <ul className="mt-4 space-y-3 text-[15px] text-[#f9f7f0]/85">
             <li>
               <a href={`mailto:${siteConfig.contact.email}`} className="inline-flex items-center gap-2.5 hover:text-sun">
                 <Mail className="size-4 shrink-0" aria-hidden /> {siteConfig.contact.email}
@@ -62,8 +62,8 @@ export function Footer() {
               <MapPin className="size-4 shrink-0" aria-hidden /> {siteConfig.contact.address}
             </li>
           </ul>
-          <div className="mt-6 rounded-2xl border border-paper/15 bg-paper/5 p-4 text-sm text-paper/80">
-            <strong className="text-paper">Açık kaynak eğitim:</strong> {siteConfig.name} gönüllü öğretmenler ve öğrenciler tarafından geliştirilen, reklamsız
+          <div className="mt-6 rounded-2xl border border-[#f9f7f0]/15 bg-[#f9f7f0]/6 p-4 text-sm text-[#f9f7f0]/80">
+            <strong className="text-[#f9f7f0]">Açık kaynak eğitim:</strong> {siteConfig.name} gönüllü öğretmenler ve öğrenciler tarafından geliştirilen, reklamsız
             ve açık kaynak bir eğitim projesidir.
             <a
               href={siteConfig.githubUrl}
@@ -79,8 +79,8 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-paper/15">
-        <div className="container-page flex flex-col gap-4 py-6 text-sm text-paper/70 md:flex-row md:items-center md:justify-between">
+      <div className="border-t border-[#f9f7f0]/15">
+        <div className="container-page flex flex-col gap-4 py-6 text-sm text-[#f9f7f0]/70 md:flex-row md:items-center md:justify-between">
           <p>
             © {year} {siteConfig.name} Tüm hakları saklıdır.
           </p>
@@ -118,7 +118,7 @@ function FooterColumn({
       <ul className={`mt-4 gap-x-4 gap-y-2.5 text-[15px] ${twoCols ? 'grid grid-cols-2 sm:grid-cols-1 lg:grid-cols-2' : 'space-y-2.5'}`}>
         {links.map((l) => (
           <li key={l.to}>
-            <Link to={l.to} className="text-paper/85 transition hover:text-sun">
+            <Link to={l.to} className="text-[#f9f7f0]/85 transition hover:text-sun">
               {l.label}
             </Link>
           </li>

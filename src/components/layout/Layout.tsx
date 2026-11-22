@@ -9,7 +9,7 @@ import { AuthModal } from '../auth/AuthModal'
 export function Layout() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <a href="#main" className="sr-only z-50 rounded-lg bg-ink px-4 py-2 text-paper focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
+      <a href="#main" className="sr-only z-50 rounded-lg bg-ink px-4 py-2 text-paper dark:bg-sun dark:text-[#12204a] focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
         İçeriğe geç
       </a>
       <DemoBanner />
@@ -29,7 +29,7 @@ function DemoBanner() {
   const [hidden, setHidden] = useState(() => sessionStorage.getItem('biders:demo-banner') === '0')
   if (!isDemo || hidden) return null
   return (
-    <div className="relative border-b border-ink/10 bg-sun text-ink">
+    <div className="relative border-b border-[#12204a]/15 bg-sun text-[#12204a]">
       <div className="container-page flex items-center gap-2 py-2 pr-10 text-[13px] font-medium sm:justify-center">
         <FlaskConical className="size-4 shrink-0" aria-hidden />
         <p>
@@ -47,7 +47,7 @@ function DemoBanner() {
           sessionStorage.setItem('biders:demo-banner', '0')
           setHidden(true)
         }}
-        className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md hover:bg-ink/10"
+        className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md hover:bg-[#12204a]/12"
         aria-label="Demo uyarısını kapat"
       >
         <X className="size-4" />

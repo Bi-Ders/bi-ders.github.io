@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { HomePage } from './pages/HomePage'
@@ -43,7 +44,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-6 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-paper"
+            className="mt-6 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-paper dark:bg-sun dark:text-[#12204a]"
           >
             Sayfayı Yenile
           </button>
@@ -59,9 +60,10 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 export function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter basename={basename}>
-          <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter basename={basename}>
+            <Routes>
             <Route element={<Layout />}>
               <Route index element={<HomePage />} />
 
@@ -118,9 +120,10 @@ export function App() {
 
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

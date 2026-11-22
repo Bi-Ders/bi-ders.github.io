@@ -269,7 +269,7 @@ export function ResourceModulePage({ module }: { module: ResourceModuleKey }) {
                   Temizle
                 </Button>
               ) : (
-                <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-white/70 px-3 py-2.5 text-xs font-semibold text-muted">
+                <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-card/80 px-3 py-2.5 text-xs font-semibold text-muted">
                   <Filter className="size-3.5" aria-hidden />
                   <span>{resources.data?.items.length ?? 0} doküman</span>
                 </div>
@@ -335,7 +335,7 @@ export function ResourceModulePage({ module }: { module: ResourceModuleKey }) {
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold backdrop-blur-xs">
                         {item.grade}
                       </span>
-                      <span className="rounded-md bg-ink/80 px-2 py-0.5 text-[11px] font-extrabold tracking-wide uppercase">
+                      <span className="rounded-md bg-[#12204a]/80 px-2 py-0.5 text-[11px] font-extrabold tracking-wide text-[#f9f7f0] uppercase">
                         {item.format}
                       </span>
                     </div>
@@ -452,7 +452,7 @@ function DocumentPreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 animate-fade-in bg-ink/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#091129]/55 backdrop-blur-[2px] dark:bg-[#050a1a]/75" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -472,7 +472,7 @@ function DocumentPreviewModal({
           <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
             <span className="rounded-full bg-white/20 px-2.5 py-0.5 backdrop-blur-xs">{moduleLabel}</span>
             <span className="rounded-full bg-white/20 px-2.5 py-0.5 backdrop-blur-xs">{resource.grade}</span>
-            <span className="rounded-md bg-ink/80 px-2 py-0.5 uppercase">{resource.format}</span>
+            <span className="rounded-md bg-[#12204a]/80 px-2 py-0.5 text-[#f9f7f0] uppercase">{resource.format}</span>
           </div>
           <h2 id="doc-preview-title" className="mt-3 pr-10 font-display text-2xl font-extrabold text-white">
             {resource.title}
@@ -516,7 +516,7 @@ function DocumentPreviewModal({
 
           <div className="space-y-4">
             {resource.preview_sections.map((section, idx) => (
-              <div key={section.heading} className="rounded-2xl border border-line bg-white p-5">
+              <div key={section.heading} className="rounded-2xl border border-line bg-card p-5">
                 <div className="flex items-center gap-2">
                   <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-brand-soft text-xs font-extrabold text-brand-dark">
                     {idx + 1}
@@ -547,7 +547,7 @@ function DocumentPreviewModal({
         </div>
 
         {/* Alt eylem çubuğu */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-white px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-card px-6 py-4">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Kapat
           </Button>

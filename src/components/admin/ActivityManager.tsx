@@ -163,11 +163,11 @@ export function ActivityManager({
               className={cn(
                 'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition',
                 kind === 'game'
-                  ? 'border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)]'
-                  : 'border-line bg-white text-ink-soft hover:border-ink',
+                  ? 'border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun/60 dark:shadow-none'
+                  : 'border-line bg-card text-ink-soft hover:border-ink dark:hover:border-sun/60',
               )}
             >
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-paper">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-paper dark:bg-sun dark:text-[#12204a]">
                 <Gamepad2 className="size-5" aria-hidden />
               </span>
               <div>
@@ -184,8 +184,8 @@ export function ActivityManager({
               className={cn(
                 'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition',
                 kind === 'activity'
-                  ? 'border-ink bg-brand-soft text-ink shadow-[0_2px_0_0_var(--color-ink)]'
-                  : 'border-line bg-white text-ink-soft hover:border-ink',
+                  ? 'border-ink bg-brand-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-brand/60 dark:shadow-none'
+                  : 'border-line bg-card text-ink-soft hover:border-ink dark:hover:border-sun/60',
               )}
             >
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand text-white">
@@ -294,7 +294,7 @@ export function ActivityManager({
                     setEmbedUrl(sample.url)
                     setKind(sample.kind)
                   }}
-                  className="rounded-lg border border-line-strong bg-white px-2.5 py-1 text-[11px] font-bold text-ink-soft hover:border-ink hover:text-ink"
+                  className="rounded-lg border border-line-strong bg-card px-2.5 py-1 text-[11px] font-bold text-ink-soft hover:border-ink hover:text-ink"
                 >
                   {sample.label}
                 </button>
@@ -440,7 +440,7 @@ export function ActivityManager({
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     to={`/etkinlikler?tur=${a.kind}`}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-white px-2.5 text-xs font-bold text-ink hover:border-ink"
+                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-card px-2.5 text-xs font-bold text-ink hover:border-ink dark:hover:border-sun/60"
                   >
                     Sayfada Gör <ExternalLink className="size-3" aria-hidden />
                   </Link>

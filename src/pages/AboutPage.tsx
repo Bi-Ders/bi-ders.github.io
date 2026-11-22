@@ -47,7 +47,7 @@ export function AboutPage() {
         <div className="grid gap-5 sm:grid-cols-2">
           {values.map((v) => (
             <div key={v.title} className="card p-6">
-              <div className="grid size-11 place-items-center rounded-xl border border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)]" aria-hidden>
+              <div className="grid size-11 place-items-center rounded-xl border border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun/45 dark:text-sun dark:shadow-none" aria-hidden>
                 {v.icon}
               </div>
               <h2 className="mt-4 text-xl font-bold">{v.title}</h2>
@@ -57,7 +57,7 @@ export function AboutPage() {
         </div>
 
         {/* Açık Kaynak ve GitHub Bilgilendirme Alanı */}
-        <div className="mt-10 overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-card)]">
+        <div className="mt-10 overflow-hidden rounded-3xl border border-line bg-card shadow-[var(--shadow-card)]">
           <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-8">
               <div className="inline-flex items-center gap-2 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-dark">
@@ -93,10 +93,10 @@ export function AboutPage() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-start justify-between gap-6 rounded-3xl border border-ink bg-ink p-8 text-paper sm:flex-row sm:items-center">
+        <div className="mt-10 flex flex-col items-start justify-between gap-6 rounded-3xl border border-[#12204a] bg-[#12204a] p-8 text-[#f9f7f0] dark:border-line dark:bg-[#0d1838] sm:flex-row sm:items-center">
           <div className="max-w-xl">
-            <h2 className="font-display text-2xl font-extrabold text-paper">Öğretmen misin veya katkı sağlamak mı istiyorsun?</h2>
-            <p className="mt-2 text-paper/80">Ders notu, sunu, yazılı, test veya etkinlik önerisi paylaşmak için bize ulaşabilirsin.</p>
+            <h2 className="font-display text-2xl font-extrabold text-[#f9f7f0]">Öğretmen misin veya katkı sağlamak mı istiyorsun?</h2>
+            <p className="mt-2 text-[#f9f7f0]/80">Ders notu, sunu, yazılı, test veya etkinlik önerisi paylaşmak için bize ulaşabilirsin.</p>
           </div>
           <ButtonLink to="/iletisim" variant="sun" size="lg">
             İletişime Geç

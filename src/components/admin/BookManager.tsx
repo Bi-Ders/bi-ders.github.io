@@ -451,7 +451,7 @@ export function BookManager({
                   placeholder="Boş bırak = Otomatik Kapak"
                 />
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-white px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-card px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
                     <ImagePlus className="size-3.5 text-brand" aria-hidden />
                     <span>{uploadingCover ? 'Yükleniyor…' : 'Görsel Yükle'}</span>
                     <input
@@ -472,7 +472,7 @@ export function BookManager({
                         }
                         setCoverUrl('')
                       }}
-                      className="rounded-lg px-2 py-1 text-xs font-bold text-muted hover:bg-white hover:text-ink"
+                      className="rounded-lg px-2 py-1 text-xs font-bold text-muted hover:bg-card hover:text-ink"
                     >
                       Otomatik Kapağa Dön
                     </button>
@@ -484,7 +484,7 @@ export function BookManager({
                       key={preset.path}
                       type="button"
                       onClick={() => setCoverUrl(preset.path)}
-                      className="rounded-md border border-line bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:border-ink hover:text-ink"
+                      className="rounded-md border border-line bg-card px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:border-ink hover:text-ink"
                     >
                       {preset.label}
                     </button>
@@ -507,7 +507,7 @@ export function BookManager({
                   placeholder="/books/samples/...pdf veya https://..."
                 />
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-white px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong bg-card px-3 py-1.5 text-xs font-bold text-ink hover:border-ink">
                     <FileUp className="size-3.5 text-brand" aria-hidden />
                     <span>{uploadingPdf ? 'Yükleniyor…' : 'PDF Yükle'}</span>
                     <input
@@ -659,7 +659,7 @@ export function BookManager({
                 />
               </div>
 
-              <div className="mt-4 rounded-xl border border-line bg-white p-3.5 text-center">
+              <div className="mt-4 rounded-xl border border-line bg-card p-3.5 text-center">
                 <p className="line-clamp-2 font-sans text-sm font-bold text-ink">
                   {title || 'Yeni Kitap Başlığı'}
                 </p>
@@ -773,7 +773,7 @@ export function BookManager({
                   <div className="flex shrink-0 items-center gap-1.5">
                     <Link
                       to={`/kitaplar/${b.slug}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-white px-2.5 text-xs font-bold text-ink hover:border-ink"
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-card px-2.5 text-xs font-bold text-ink hover:border-ink dark:hover:border-sun/60"
                     >
                       Detay <ExternalLink className="size-3" aria-hidden />
                     </Link>

@@ -10,11 +10,13 @@ const base =
   'inline-flex items-center justify-center gap-2 rounded-xl font-semibold whitespace-nowrap transition duration-150 select-none disabled:pointer-events-none disabled:opacity-55 active:translate-y-px'
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-ink text-paper hover:bg-ink-soft shadow-[0_2px_0_0_rgb(0_0_0/0.25)]',
-  secondary: 'bg-white text-ink border border-line-strong hover:border-ink hover:bg-paper',
-  ghost: 'text-ink hover:bg-ink/6',
-  sun: 'bg-sun text-ink hover:brightness-95 shadow-[0_2px_0_0_var(--color-ink)] border border-ink',
-  danger: 'bg-danger text-white hover:brightness-110',
+  primary:
+    'bg-ink text-paper hover:bg-ink-soft shadow-[0_2px_0_0_rgb(0_0_0/0.25)] dark:bg-sun dark:text-[#12204a] dark:hover:brightness-95',
+  secondary:
+    'bg-card text-ink border border-line-strong hover:border-ink hover:bg-paper dark:hover:border-sun/65 dark:hover:bg-[#203673]',
+  ghost: 'text-ink hover:bg-ink/6 dark:hover:bg-white/8',
+  sun: 'bg-sun text-[#12204a] hover:brightness-95 shadow-[0_2px_0_0_#12204a] border border-[#12204a] dark:border-sun/80 dark:shadow-[0_2px_0_0_#091129]',
+  danger: 'bg-danger text-white hover:brightness-110 dark:bg-[#dc2626] dark:text-[#f9f7f0]',
 }
 
 const sizes: Record<Size, string> = {

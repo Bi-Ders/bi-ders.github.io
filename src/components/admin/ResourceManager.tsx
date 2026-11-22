@@ -293,15 +293,15 @@ export function ResourceManager({
                 className={cn(
                   'rounded-xl border px-3 py-2.5 text-left transition',
                   target === opt.value
-                    ? 'border-ink bg-ink text-paper shadow-xs'
-                    : 'border-line-strong bg-white text-ink-soft hover:border-ink hover:text-ink',
+                    ? 'border-ink bg-ink text-paper shadow-xs dark:border-sun dark:bg-sun dark:text-[#12204a]'
+                    : 'border-line-strong bg-card text-ink-soft hover:border-ink hover:text-ink dark:hover:border-sun/60',
                 )}
               >
                 <span className="block text-xs font-extrabold">{opt.label}</span>
                 <span
                   className={cn(
                     'mt-0.5 block truncate text-[11px]',
-                    target === opt.value ? 'text-paper/75' : 'text-muted',
+                    target === opt.value ? 'text-paper/75 dark:text-[#12204a]/75' : 'text-muted',
                   )}
                 >
                   {opt.route}
@@ -458,7 +458,7 @@ export function ResourceManager({
         <div className="rounded-2xl border border-line bg-paper/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-bold text-ink">Dosya / Kaynak Bağlantısı</span>
-            <div className="inline-flex rounded-xl border border-line-strong bg-white p-0.5">
+            <div className="inline-flex rounded-xl border border-line-strong bg-card p-0.5">
               <button
                 type="button"
                 onClick={() => {
@@ -467,7 +467,7 @@ export function ResourceManager({
                 }}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition',
-                  sourceMode === 'link' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
+                  sourceMode === 'link' ? 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]' : 'text-ink-soft hover:text-ink',
                 )}
               >
                 <Link2 className="size-3.5" aria-hidden /> Harici Link
@@ -477,7 +477,7 @@ export function ResourceManager({
                 onClick={() => setSourceMode('file')}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition',
-                  sourceMode === 'file' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
+                  sourceMode === 'file' ? 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]' : 'text-ink-soft hover:text-ink',
                 )}
               >
                 <Upload className="size-3.5" aria-hidden /> Dosya Yükle
@@ -501,7 +501,7 @@ export function ResourceManager({
             </div>
           ) : (
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-line-strong bg-card px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink">
                 <FileUp className="size-4 text-brand" aria-hidden />
                 <span>{uploading ? 'Yükleniyor…' : 'PDF / PPTX / DOCX / ZIP Seç'}</span>
                 <input
@@ -670,7 +670,7 @@ export function ResourceManager({
                   <div className="flex shrink-0 items-center gap-2">
                     <Link
                       to={`/${r.module}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-white px-2.5 text-xs font-bold text-ink hover:border-ink"
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-card px-2.5 text-xs font-bold text-ink hover:border-ink dark:hover:border-sun/60"
                     >
                       Modülde Gör <ExternalLink className="size-3" aria-hidden />
                     </Link>
@@ -705,7 +705,7 @@ export function ResourceManager({
                   <div className="flex shrink-0 items-center gap-2">
                     <Link
                       to={`/dersler/${c.slug}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-white px-2.5 text-xs font-bold text-ink hover:border-ink"
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-card px-2.5 text-xs font-bold text-ink hover:border-ink dark:hover:border-sun/60"
                     >
                       Görüntüle <ExternalLink className="size-3" aria-hidden />
                     </Link>

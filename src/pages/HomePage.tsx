@@ -52,7 +52,13 @@ export function HomePage() {
                   Profilime Git
                 </ButtonLink>
               ) : (
-                <Button variant="sun" size="lg" onClick={() => openAuth('register')} icon={<Sparkles className="size-4" aria-hidden />}>
+                <Button
+                  variant="sun"
+                  size="lg"
+                  onClick={() => openAuth('register')}
+                  icon={<Sparkles className="size-4" aria-hidden />}
+                  className="dark:border-sun/65 dark:bg-card dark:text-sun dark:shadow-none dark:hover:bg-[#203673]"
+                >
                   Ücretsiz Katıl
                 </Button>
               )}
@@ -69,11 +75,11 @@ export function HomePage() {
           </div>
 
           <div className="lg:col-span-5">
-            <div className="overflow-hidden rounded-3xl border border-line bg-paper p-3 shadow-[var(--shadow-pop)]">
+            <div className="overflow-hidden rounded-3xl border border-line bg-[#faf7f0] p-3 shadow-[var(--shadow-pop)] dark:border-white/15 dark:bg-[#f4efe3]">
               <img
                 src={heroImg}
                 alt="Ders kitapları, açık matematik defteri ve öğrenci forumunu temsil eden illüstrasyon"
-                className="aspect-[4/3] w-full rounded-2xl object-cover"
+                className="aspect-[4/3] w-full rounded-2xl object-cover dark:brightness-95"
               />
             </div>
           </div>

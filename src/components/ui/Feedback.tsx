@@ -83,9 +83,9 @@ type EmptyStateProps = {
 
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center rounded-2xl border border-dashed border-line-strong bg-white/60 px-6 py-14 text-center', className)}>
+    <div className={cn('flex flex-col items-center rounded-2xl border border-dashed border-line-strong bg-card/70 px-6 py-14 text-center', className)}>
       {icon && (
-        <div className="mb-4 grid size-14 place-items-center rounded-2xl border border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)]">
+        <div className="mb-4 grid size-14 place-items-center rounded-2xl border border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun/45 dark:text-sun dark:shadow-none">
           {icon}
         </div>
       )}
@@ -106,7 +106,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
         <button
           type="button"
           onClick={onRetry}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl border border-ink bg-white px-4 py-2 text-sm font-semibold hover:bg-paper"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl border border-line-strong bg-card px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
         >
           <RotateCcw className="size-4" aria-hidden /> Tekrar dene
         </button>
@@ -123,7 +123,7 @@ export function Alert({ tone = 'info', children, className }: { tone?: 'info' | 
     info: 'bg-brand-soft text-ink border-brand/25',
     success: 'bg-success-soft text-success border-success/25',
     error: 'bg-danger-soft text-danger border-danger/25',
-    warning: 'bg-sun-soft text-ink border-sun-dark/25',
+    warning: 'bg-sun-soft text-ink border-sun-dark/25 dark:border-sun/35',
   }
   return (
     <div role={tone === 'error' ? 'alert' : 'status'} className={cn('rounded-xl border px-4 py-3 text-sm font-medium', tones[tone], className)}>

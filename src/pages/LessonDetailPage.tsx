@@ -129,7 +129,7 @@ export function LessonDetailPage() {
             <a
               href={content.file_url}
               download={`${content.slug}.pdf`}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink bg-sun px-4 text-sm font-semibold text-ink shadow-[0_2px_0_0_var(--color-ink)] hover:brightness-95"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#12204a] bg-sun px-4 text-sm font-semibold text-[#12204a] shadow-[0_2px_0_0_#12204a] hover:brightness-95 dark:border-sun/80 dark:shadow-[0_2px_0_0_#091129]"
             >
               <Download className="size-4" aria-hidden /> Dosyayı İndir
             </a>
@@ -138,7 +138,7 @@ export function LessonDetailPage() {
               href={content.file_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink bg-sun px-4 text-sm font-semibold text-ink shadow-[0_2px_0_0_var(--color-ink)] hover:brightness-95"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#12204a] bg-sun px-4 text-sm font-semibold text-[#12204a] shadow-[0_2px_0_0_#12204a] hover:brightness-95 dark:border-sun/80 dark:shadow-[0_2px_0_0_#091129]"
             >
               <ExternalLink className="size-4" aria-hidden /> Dosyayı Aç
             </a>

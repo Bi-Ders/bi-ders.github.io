@@ -33,15 +33,15 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
           alt=""
           width={36}
           height={36}
-          className="size-9 shrink-0 rounded-xl transition-transform duration-300 group-hover:-rotate-6"
+          className="size-9 shrink-0 rounded-xl transition-transform duration-300 group-hover:-rotate-6 dark:ring-1 dark:ring-[#f9f7f0]/20"
         />
       ) : (
-        <LogoMark className="transition-transform duration-300 group-hover:-rotate-6" />
+        <LogoMark className="transition-transform duration-300 group-hover:-rotate-6 dark:ring-1 dark:ring-[#f9f7f0]/20 dark:rounded-xl" />
       )}
       {!compact && (
         <span className="font-display text-[22px] leading-none font-extrabold tracking-[-0.03em] text-ink">
           {siteConfig.logoText.main}
-          <span className="text-brand">{siteConfig.logoText.accent}</span>
+          <span className="text-brand dark:text-sun">{siteConfig.logoText.accent}</span>
         </span>
       )}
     </Link>
@@ -51,16 +51,22 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
 // ---------------------------------------------------------------
 // Avatar
 // ---------------------------------------------------------------
-const avatarColors = ['bg-brand text-white', 'bg-sun text-ink', 'bg-success text-white', 'bg-ink text-paper', 'bg-[#9A3B8C] text-white']
+const avatarColors = [
+  'bg-brand text-white dark:bg-[#2f55d4] dark:text-[#f9f7f0]',
+  'bg-sun text-[#12204a]',
+  'bg-success text-white dark:bg-[#17714f] dark:text-[#f9f7f0]',
+  'bg-[#12204a] text-[#faf7f0] dark:bg-[#0d1838] dark:text-[#f9f7f0]',
+  'bg-[#9A3B8C] text-white',
+]
 
 export function Avatar({ name, src, size = 'md', className }: { name: string | null | undefined; src?: string | null; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
   const dim = { sm: 'size-8 text-xs', md: 'size-10 text-sm', lg: 'size-14 text-lg', xl: 'size-24 text-3xl' }[size]
   const color = avatarColors[(name ?? '').length % avatarColors.length]
   if (src) {
-    return <img src={src} alt="" className={cn('shrink-0 rounded-full object-cover ring-2 ring-white', dim, className)} referrerPolicy="no-referrer" />
+    return <img src={src} alt="" className={cn('shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-card', dim, className)} referrerPolicy="no-referrer" />
   }
   return (
-    <span className={cn('grid shrink-0 place-items-center rounded-full font-bold ring-2 ring-white', dim, color, className)} aria-hidden>
+    <span className={cn('grid shrink-0 place-items-center rounded-full font-bold ring-2 ring-white dark:ring-card', dim, color, className)} aria-hidden>
       {initials(name)}
     </span>
   )
@@ -78,7 +84,7 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: BadgeT
     sun: 'bg-sun-soft text-sun-dark',
     success: 'bg-success-soft text-success',
     danger: 'bg-danger-soft text-danger',
-    ink: 'bg-ink text-paper',
+    ink: 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]',
   }
   return <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold', tones[tone], className)}>{children}</span>
 }
@@ -129,7 +135,9 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
       aria-pressed={active}
       className={cn(
         'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition',
-        active ? 'border-ink bg-ink text-paper' : 'border-line-strong bg-white text-ink-soft hover:border-ink hover:text-ink',
+        active
+          ? 'border-ink bg-ink text-paper dark:border-sun dark:bg-sun dark:text-[#12204a]'
+          : 'border-line-strong bg-card text-ink-soft hover:border-ink hover:text-ink dark:hover:border-sun/60',
       )}
     >
       {children}

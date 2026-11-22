@@ -265,7 +265,7 @@ function NewTopicModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 animate-fade-in bg-ink/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#091129]/50 backdrop-blur-[2px] dark:bg-[#050a1a]/75" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -276,7 +276,7 @@ function NewTopicModal({
           type="button"
           onClick={onClose}
           aria-label="Kapat"
-          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted hover:bg-ink/5 hover:text-ink"
+          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted hover:bg-ink/5 hover:text-ink dark:hover:bg-white/10"
         >
           <X className="size-5" />
         </button>

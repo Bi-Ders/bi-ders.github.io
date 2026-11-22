@@ -8,6 +8,7 @@ import { cn, roleLabels } from '../../lib/utils'
 import { ModuleIcon } from '../modules/ModuleIcon'
 import { Avatar, Logo } from '../ui/Display'
 import { Button } from '../ui/Button'
+import { ThemeToggle, ThemeToggleRow } from '../ui/ThemeToggle'
 import { SearchBar } from './SearchBar'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -15,15 +16,15 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     'relative rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors',
     isActive
       ? 'text-ink after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-sun'
-      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+      : 'text-ink-soft hover:bg-ink/5 hover:text-ink dark:hover:bg-white/6',
   )
 
 const moduleLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-bold whitespace-nowrap transition',
     isActive
-      ? 'bg-ink text-paper shadow-xs'
-      : 'text-ink-soft hover:bg-white hover:text-ink',
+      ? 'bg-ink text-paper shadow-xs dark:bg-sun dark:text-[#12204a]'
+      : 'text-ink-soft hover:bg-card hover:text-ink dark:hover:bg-[#192b5e]',
   )
 
 export function Header() {
@@ -36,9 +37,9 @@ export function Header() {
   useLockBody(mobileOpen)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/92 backdrop-blur-md supports-[backdrop-filter]:bg-paper/82">
-      {/* Üst Satır: Logo, Genel Menü, Arama, Hesap */}
-      <div className="container-page flex h-16 items-center gap-3 lg:gap-5">
+    <header className="sticky top-0 z-40 border-b border-line bg-paper/92 backdrop-blur-md supports-[backdrop-filter]:bg-paper/82 dark:bg-[#12204a]/92 dark:supports-[backdrop-filter]:bg-[#12204a]/84">
+      {/* Üst Satır: Logo, Genel Menü, Arama, Tema, Hesap */}
+      <div className="container-page flex h-16 items-center gap-3 lg:gap-4">
         <Logo className="shrink-0" />
 
         <nav aria-label="Genel menü" className="hidden items-center gap-0.5 lg:flex">
@@ -52,6 +53,9 @@ export function Header() {
         <SearchBar id="header-search" className="ml-auto hidden w-full max-w-xs md:block lg:max-w-sm" />
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
+          {/* Masaüstünde arama çubuğu ile profil/giriş butonu arasında minimal tema ikonu */}
+          <ThemeToggle className="hidden lg:grid" />
+
           {loading ? (
             <div className="skeleton h-10 w-24 rounded-xl" aria-hidden />
           ) : user ? (
@@ -62,7 +66,7 @@ export function Header() {
 
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink lg:hidden"
+            className="grid size-10 place-items-center rounded-xl border border-line-strong bg-card text-ink transition hover:border-ink dark:hover:border-sun/60 lg:hidden"
             aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
             aria-expanded={mobileOpen}
             aria-controls="mobile-menu"
@@ -74,7 +78,7 @@ export function Header() {
       </div>
 
       {/* Alt Satır: 8 Ana Eğitim Modülü Hızlı Erişim Menüsü */}
-      <div className="border-t border-line/70 bg-paper-deep/65">
+      <div className="border-t border-line/70 bg-paper-deep/65 dark:bg-[#0d1838]/90">
         <nav
           aria-label="Eğitim modülleri"
           className="container-page flex items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -120,7 +124,7 @@ function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-10 items-center gap-2 rounded-xl border border-line-strong bg-white pr-2.5 pl-1 transition hover:border-ink"
+        className="flex h-10 items-center gap-2 rounded-xl border border-line-strong bg-card pr-2.5 pl-1 transition hover:border-ink dark:hover:border-sun/60"
       >
         <Avatar name={name} src={profile?.avatar_url} size="sm" className="ring-0" />
         <span className="hidden max-w-[120px] truncate text-sm font-semibold sm:block">{name.split(' ')[0]}</span>
@@ -130,7 +134,7 @@ function UserMenu() {
       {open && (
         <div role="menu" aria-labelledby="user-menu-button" className="card absolute right-0 mt-2 w-64 origin-top-right animate-pop-in overflow-hidden p-1.5">
           <div className="border-b border-line px-3 pt-2 pb-3">
-            <p className="truncate font-semibold">{name}</p>
+            <p className="truncate font-semibold text-ink">{name}</p>
             <p className="truncate text-xs text-muted">
               {profile?.email ? `${profile.email} · ` : ''}
               {profile ? roleLabels[profile.role] : ''}
@@ -167,7 +171,7 @@ function UserMenu() {
 
 function MenuLink({ to, icon, children }: { to: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Link role="menuitem" to={to} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-paper hover:text-ink">
+    <Link role="menuitem" to={to} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-paper hover:text-ink dark:hover:bg-[#0d1838]">
       <span className="text-muted" aria-hidden>
         {icon}
       </span>
@@ -187,12 +191,17 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 top-[108px] z-30 animate-fade-in bg-ink/30 lg:hidden" onClick={onClose} aria-hidden />
+      <div className="fixed inset-0 top-[108px] z-30 animate-fade-in bg-[#091129]/40 dark:bg-[#050a1a]/70 lg:hidden" onClick={onClose} aria-hidden />
       <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-7rem)] animate-pop-in overflow-y-auto border-b border-line bg-paper shadow-[var(--shadow-pop)] lg:hidden">
         <div className="container-page py-5">
           <SearchBar id="mobile-search" className="md:hidden" onSubmitted={onClose} />
 
-          <p className="eyebrow mt-4 md:mt-0">8 Eğitim Modülü</p>
+          {/* Mobilde tema değiştirici satırı */}
+          <div className="mt-4 md:mt-0">
+            <ThemeToggleRow />
+          </div>
+
+          <p className="eyebrow mt-5">8 Eğitim Modülü</p>
           <nav aria-label="Mobil eğitim modülleri" className="mt-2.5 grid grid-cols-2 gap-2">
             {siteConfig.educationModules.map((mod) => (
               <NavLink
@@ -201,7 +210,9 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-bold transition',
-                    isActive ? 'border-ink bg-ink text-paper' : 'border-line bg-white text-ink hover:border-ink',
+                    isActive
+                      ? 'border-ink bg-ink text-paper dark:border-sun dark:bg-sun dark:text-[#12204a]'
+                      : 'border-line bg-card text-ink hover:border-ink dark:hover:border-sun/60',
                   )
                 }
               >
@@ -218,13 +229,22 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  cn('flex flex-col rounded-xl px-4 py-2.5 transition', isActive ? 'bg-ink text-paper' : 'hover:bg-white')
+                  cn(
+                    'flex flex-col rounded-xl px-4 py-2.5 transition',
+                    isActive
+                      ? 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]'
+                      : 'hover:bg-card',
+                  )
                 }
               >
                 {({ isActive }) => (
                   <>
                     <span className="text-sm font-semibold">{item.label}</span>
-                    {item.description && <span className={cn('text-xs', isActive ? 'text-paper/75' : 'text-muted')}>{item.description}</span>}
+                    {item.description && (
+                      <span className={cn('text-xs', isActive ? 'text-paper/75 dark:text-[#12204a]/75' : 'text-muted')}>
+                        {item.description}
+                      </span>
+                    )}
                   </>
                 )}
               </NavLink>
@@ -234,11 +254,11 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           <div className="mt-5 border-t border-line pt-5">
             {user ? (
               <div className="grid gap-2 sm:grid-cols-3">
-                <Link to="/profil" className="flex items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-3 font-semibold">
+                <Link to="/profil" className="flex items-center gap-2 rounded-xl border border-line-strong bg-card px-4 py-3 font-semibold text-ink">
                   <User className="size-4" aria-hidden /> Profilim
                 </Link>
                 {isStaff && (
-                  <Link to="/admin" className="flex items-center gap-2 rounded-xl border border-line-strong bg-white px-4 py-3 font-semibold">
+                  <Link to="/admin" className="flex items-center gap-2 rounded-xl border border-line-strong bg-card px-4 py-3 font-semibold text-ink">
                     <LayoutDashboard className="size-4" aria-hidden /> Yönetim Paneli
                   </Link>
                 )}
@@ -248,7 +268,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
                     onClose()
                     void signOut()
                   }}
-                  className="flex items-center gap-2 rounded-xl border border-danger/30 bg-white px-4 py-3 font-semibold text-danger"
+                  className="flex items-center gap-2 rounded-xl border border-danger/30 bg-card px-4 py-3 font-semibold text-danger"
                 >
                   <LogOut className="size-4" aria-hidden /> Çıkış Yap
                 </button>

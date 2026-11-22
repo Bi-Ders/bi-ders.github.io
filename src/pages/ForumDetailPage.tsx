@@ -494,7 +494,7 @@ export function ForumDetailPage() {
                         'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition',
                         likeState.liked
                           ? 'border-brand bg-brand-soft text-brand-dark'
-                          : 'border-line bg-white text-muted hover:border-ink hover:text-ink',
+                          : 'border-line bg-card text-muted hover:border-ink hover:text-ink dark:hover:border-sun/60',
                       )}
                     >
                       <ThumbsUp className={cn('size-3.5', likeState.liked && 'fill-current')} aria-hidden />

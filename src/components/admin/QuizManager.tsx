@@ -308,7 +308,7 @@ export function QuizManager({
             <div key={q.key} className="rounded-2xl border border-line-strong bg-paper/75 p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-2 font-display text-sm font-extrabold text-ink">
-                  <span className="grid size-6 place-items-center rounded-lg bg-ink text-xs text-paper">
+                  <span className="grid size-6 place-items-center rounded-lg bg-ink text-xs text-paper dark:bg-sun dark:text-[#12204a]">
                     {qIdx + 1}
                   </span>
                   <span>Soru {qIdx + 1}</span>
@@ -320,7 +320,7 @@ export function QuizManager({
                     disabled={qIdx === 0}
                     onClick={() => moveQuestion(qIdx, -1)}
                     aria-label="Soruyu yukarı taşı"
-                    className="grid size-7 place-items-center rounded-lg border border-line bg-white text-ink-soft hover:border-ink disabled:opacity-40"
+                    className="grid size-7 place-items-center rounded-lg border border-line bg-card text-ink-soft hover:border-ink dark:hover:border-sun/60 disabled:opacity-40"
                   >
                     <ArrowUp className="size-3.5" />
                   </button>
@@ -329,7 +329,7 @@ export function QuizManager({
                     disabled={qIdx === questions.length - 1}
                     onClick={() => moveQuestion(qIdx, 1)}
                     aria-label="Soruyu aşağı taşı"
-                    className="grid size-7 place-items-center rounded-lg border border-line bg-white text-ink-soft hover:border-ink disabled:opacity-40"
+                    className="grid size-7 place-items-center rounded-lg border border-line bg-card text-ink-soft hover:border-ink dark:hover:border-sun/60 disabled:opacity-40"
                   >
                     <ArrowDown className="size-3.5" />
                   </button>
@@ -338,7 +338,7 @@ export function QuizManager({
                       type="button"
                       onClick={() => removeQuestion(q.key)}
                       aria-label={`Soru ${qIdx + 1} sil`}
-                      className="grid size-7 place-items-center rounded-lg border border-danger/30 bg-white text-danger hover:bg-danger-soft"
+                      className="grid size-7 place-items-center rounded-lg border border-danger/30 bg-card text-danger hover:bg-danger-soft"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -372,7 +372,7 @@ export function QuizManager({
                       key={optIdx}
                       className={cn(
                         'flex items-center gap-2 rounded-xl border p-2 transition',
-                        isCorrect ? 'border-success bg-success-soft/60' : 'border-line bg-white',
+                        isCorrect ? 'border-success bg-success-soft/60' : 'border-line bg-card',
                       )}
                     >
                       <button
@@ -387,7 +387,7 @@ export function QuizManager({
                           'grid size-8 shrink-0 place-items-center rounded-lg text-xs font-extrabold transition',
                           isCorrect
                             ? 'bg-success text-white shadow-xs'
-                            : 'bg-paper-deep text-ink-soft hover:bg-ink hover:text-paper',
+                            : 'bg-paper-deep text-ink-soft hover:bg-ink hover:text-paper dark:hover:bg-sun dark:hover:text-[#12204a]',
                         )}
                       >
                         {isCorrect ? <CheckCircle2 className="size-4" /> : OPTION_LETTERS[optIdx]}
@@ -534,7 +534,7 @@ export function QuizManager({
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     to={`/testler/${qz.id}`}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-white px-2.5 text-xs font-bold text-ink hover:border-ink"
+                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-line-strong bg-card px-2.5 text-xs font-bold text-ink hover:border-ink dark:hover:border-sun/60"
                   >
                     Teste Git <ExternalLink className="size-3" aria-hidden />
                   </Link>

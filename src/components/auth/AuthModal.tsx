@@ -51,18 +51,18 @@ export function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 animate-fade-in bg-ink/45 backdrop-blur-[2px]" onClick={closeAuth} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#091129]/50 backdrop-blur-[2px] dark:bg-[#050a1a]/75" onClick={closeAuth} aria-hidden />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-auth-title"
-        className="relative max-h-[92dvh] w-full animate-pop-in overflow-y-auto rounded-t-3xl border border-line bg-paper p-6 shadow-[var(--shadow-pop)] sm:max-w-[460px] sm:rounded-3xl sm:p-8"
+        className="relative max-h-[92dvh] w-full animate-pop-in overflow-y-auto rounded-t-3xl border border-line bg-paper p-6 shadow-[var(--shadow-pop)] dark:bg-card sm:max-w-[460px] sm:rounded-3xl sm:p-8"
       >
         <button
           type="button"
           onClick={closeAuth}
-          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted transition hover:bg-ink/5 hover:text-ink"
+          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted transition hover:bg-ink/5 hover:text-ink dark:hover:bg-white/10"
           aria-label="Kapat"
         >
           <X className="size-5" />

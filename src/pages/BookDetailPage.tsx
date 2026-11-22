@@ -319,19 +319,19 @@ function BookDetailContent({
 
                 <div className="mt-6 grid w-full grid-cols-2 gap-2.5 text-center sm:grid-cols-3">
                   {book.page_count && (
-                    <div className="rounded-xl border border-line bg-white px-3 py-2">
+                    <div className="rounded-xl border border-line bg-card px-3 py-2">
                       <p className="text-[11px] font-semibold text-muted">Sayfa</p>
                       <p className="font-display text-sm font-extrabold text-ink">{book.page_count} sf.</p>
                     </div>
                   )}
                   {book.published_year && (
-                    <div className="rounded-xl border border-line bg-white px-3 py-2">
+                    <div className="rounded-xl border border-line bg-card px-3 py-2">
                       <p className="text-[11px] font-semibold text-muted">Basım</p>
                       <p className="font-display text-sm font-extrabold text-ink">{book.published_year}</p>
                     </div>
                   )}
                   {book.grade && (
-                    <div className="col-span-2 rounded-xl border border-line bg-white px-3 py-2 sm:col-span-1">
+                    <div className="col-span-2 rounded-xl border border-line bg-card px-3 py-2 sm:col-span-1">
                       <p className="text-[11px] font-semibold text-muted">Seviye</p>
                       <p className="truncate font-display text-sm font-extrabold text-ink">{book.grade}</p>
                     </div>
@@ -444,7 +444,7 @@ function BookDetailContent({
 
               {/* Öne Çıkan Özellikler */}
               {book.highlights && book.highlights.length > 0 && (
-                <div className="mt-6 rounded-2xl border border-line bg-white p-5">
+                <div className="mt-6 rounded-2xl border border-line bg-card p-5">
                   <h3 className="flex items-center gap-2 text-sm font-extrabold tracking-wide text-ink uppercase">
                     <Sparkles className="size-4 text-brand" aria-hidden /> Bu Kitapta Neler Var?
                   </h3>
@@ -520,7 +520,7 @@ function BookDetailContent({
 
             <div className="flex flex-wrap items-center gap-2">
               {hasPdf && (
-                <div className="inline-flex rounded-xl border border-line-strong bg-white p-1" role="tablist">
+                <div className="inline-flex rounded-xl border border-line-strong bg-card p-1" role="tablist">
                   <button
                     type="button"
                     role="tab"
@@ -528,7 +528,7 @@ function BookDetailContent({
                     onClick={() => setPreviewMode('pdf')}
                     className={cn(
                       'rounded-lg px-3 py-1.5 text-xs font-bold transition',
-                      previewMode === 'pdf' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
+                      previewMode === 'pdf' ? 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]' : 'text-ink-soft hover:text-ink',
                     )}
                   >
                     PDF Görüntüleyici
@@ -540,7 +540,7 @@ function BookDetailContent({
                     onClick={() => setPreviewMode('reader')}
                     className={cn(
                       'rounded-lg px-3 py-1.5 text-xs font-bold transition',
-                      previewMode === 'reader' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
+                      previewMode === 'reader' ? 'bg-ink text-paper dark:bg-sun dark:text-[#12204a]' : 'text-ink-soft hover:text-ink',
                     )}
                   >
                     Sayfa Okuyucu {hasReaderPages ? `(${fallbackSamplePages.length})` : ''}
@@ -590,7 +590,7 @@ function BookDetailContent({
                   className="size-full border-0 bg-white"
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-white px-5 py-3 text-xs text-muted">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-card px-5 py-3 text-xs text-muted">
                 <span>Tarayıcın dahili PDF önizlemeyi desteklemiyorsa "Sayfa Okuyucu" sekmesine geçebilir veya PDF’i yeni sekmede açabilirsin.</span>
                 <button
                   type="button"
@@ -605,7 +605,7 @@ function BookDetailContent({
             <div className="bg-paper-deep/40 p-5 sm:p-8">
               <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-line-strong bg-paper shadow-[var(--shadow-card)]">
                 {/* Kitap sayfası üst bandı */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b-4 border-sun bg-ink px-6 py-4 text-paper">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b-4 border-sun bg-[#12204a] px-6 py-4 text-[#f9f7f0] dark:bg-[#0d1838]">
                   <div>
                     <p className="text-[11px] font-bold tracking-widest text-sun uppercase">
                       {book.publisher ?? 'Bi Ders! Yayınları'} · Örnek Sayfa
@@ -632,7 +632,7 @@ function BookDetailContent({
                   <p className="whitespace-pre-line text-[15px] leading-7 text-ink-soft">{currentSample.content}</p>
 
                   {currentSample.highlights && currentSample.highlights.length > 0 && (
-                    <div className="rounded-xl border border-line bg-white p-5">
+                    <div className="rounded-xl border border-line bg-card p-5">
                       <ul className="space-y-2 text-sm text-ink-soft">
                         {currentSample.highlights.map((line) => (
                           <li key={line} className="flex items-start gap-2.5">
@@ -655,7 +655,7 @@ function BookDetailContent({
                 </div>
 
                 {/* Sayfa çevirme alt çubuğu */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-white px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-card px-6 py-4">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -675,7 +675,7 @@ function BookDetailContent({
                         className={cn(
                           'rounded-lg border px-2.5 py-1 text-xs font-bold transition',
                           idx === pageIdx
-                            ? 'border-ink bg-ink text-paper'
+                            ? 'border-ink bg-ink text-paper dark:border-sun dark:bg-sun dark:text-[#12204a]'
                             : 'border-line-strong bg-paper text-ink-soft hover:border-ink',
                         )}
                       >
@@ -742,7 +742,7 @@ function BookDetailContent({
 
 function MetaItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-white px-3.5 py-2.5">
+    <div className="rounded-xl border border-line bg-card px-3.5 py-2.5">
       <dt className="flex items-center gap-1.5 text-xs font-semibold text-muted">
         <span className="text-brand" aria-hidden>
           {icon}
@@ -766,8 +766,8 @@ function FullscreenPdfModal({ title, pdfUrl, onClose }: { title: string; pdfUrl:
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-xs">
-      <div className="flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 sm:px-6">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#091129]/85 backdrop-blur-xs">
+      <div className="flex items-center justify-between gap-3 border-b border-line bg-card px-4 py-3 sm:px-6">
         <p className="truncate font-display text-base font-extrabold text-ink">{title} — Örnek Sayfa PDF</p>
         <div className="flex items-center gap-2">
           <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('secondary', 'sm')}>
@@ -777,7 +777,7 @@ function FullscreenPdfModal({ title, pdfUrl, onClose }: { title: string; pdfUrl:
             type="button"
             onClick={onClose}
             aria-label="Tam ekranı kapat"
-            className="grid size-9 place-items-center rounded-xl border border-line-strong bg-white text-ink hover:border-ink"
+            className="grid size-9 place-items-center rounded-xl border border-line-strong bg-card text-ink hover:border-ink dark:hover:border-sun/60"
           >
             <X className="size-5" />
           </button>

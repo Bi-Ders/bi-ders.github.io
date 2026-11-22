@@ -117,8 +117,8 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
       <p className="mt-1.5 text-[15px] text-muted">{t.subtitle}</p>
 
       {isDemo && mode !== 'forgot' && (
-        <section aria-labelledby={`${idPrefix}-demo`} className="mt-6 rounded-2xl border border-ink bg-sun-soft p-4 shadow-[0_2px_0_0_var(--color-ink)]">
-          <h3 id={`${idPrefix}-demo`} className="font-sans text-sm font-bold tracking-normal">
+        <section aria-labelledby={`${idPrefix}-demo`} className="mt-6 rounded-2xl border border-ink bg-sun-soft p-4 shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun/45 dark:bg-[#142352] dark:shadow-none">
+          <h3 id={`${idPrefix}-demo`} className="font-sans text-sm font-bold tracking-normal text-ink">
             Demo Modu — tek tıkla dene
           </h3>
           <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">Supabase henüz yapılandırılmadı. Örnek bir hesapla giriş yaparak tüm sayfaları deneyebilirsin.</p>
@@ -284,13 +284,13 @@ function DemoButton({ id, onClick, icon, title, subtitle }: { id: string; onClic
       id={id}
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-3 rounded-xl border border-ink/80 bg-white px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:bg-paper active:translate-y-0"
+      className="group flex items-center gap-3 rounded-xl border border-ink/80 bg-card px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:bg-paper active:translate-y-0 dark:border-line-strong dark:hover:border-sun/60 dark:hover:bg-[#203673]"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-ink text-sun transition group-hover:rotate-[-6deg]" aria-hidden>
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#12204a] text-sun transition group-hover:rotate-[-6deg] dark:bg-sun dark:text-[#12204a]" aria-hidden>
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-sm font-bold">{title}</span>
+        <span className="block truncate text-sm font-bold text-ink">{title}</span>
         <span className="block truncate text-xs text-muted">{subtitle}</span>
       </span>
     </button>

@@ -240,7 +240,7 @@ export function AdminPage() {
                       value={u.role}
                       disabled={u.id === user?.id}
                       onChange={(e) => void handleRoleChange(u.id, e.target.value as Role)}
-                      className="rounded-lg border border-line-strong bg-white px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-50"
+                      className="rounded-lg border border-line-strong bg-card px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-50 dark:bg-[#0d1838]"
                     >
                       <option value="student">Öğrenci</option>
                       <option value="teacher">Öğretmen</option>
@@ -259,9 +259,9 @@ export function AdminPage() {
 
 function StatTile({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: number; highlight?: boolean }) {
   return (
-    <div className={`rounded-2xl border p-4 ${highlight ? 'border-ink bg-sun-soft' : 'border-line bg-white'}`}>
+    <div className={`rounded-2xl border p-4 ${highlight ? 'border-ink bg-sun-soft dark:border-sun/60 dark:bg-[#1e3168]' : 'border-line bg-card'}`}>
       <div className="flex items-center gap-2 text-xs font-semibold text-muted">
-        <span className="text-brand" aria-hidden>
+        <span className="text-brand dark:text-sun" aria-hidden>
           {icon}
         </span>
         {label}

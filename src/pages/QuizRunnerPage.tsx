@@ -400,7 +400,7 @@ function QuizEngine({
                 ? 'animate-pulse border-danger bg-danger-soft text-danger'
                 : timerTone === 'sun'
                   ? 'border-sun-dark/40 bg-sun-soft text-sun-dark'
-                  : 'border-line-strong bg-white text-ink',
+                  : 'border-line-strong bg-card text-ink',
             )}
           >
             <Clock className="size-4" aria-hidden />
@@ -423,7 +423,7 @@ function QuizEngine({
                 {quiz.grade}
               </span>
             )}
-            <span className="rounded-full bg-ink/70 px-2.5 py-0.5 text-xs font-bold">
+            <span className="rounded-full bg-[#12204a]/75 px-2.5 py-0.5 text-xs font-bold text-[#f9f7f0]">
               {difficultyLabels[quiz.difficulty]}
             </span>
           </div>
@@ -464,7 +464,7 @@ function QuizEngine({
                     ? 'border-danger bg-danger-soft text-danger'
                     : answered
                       ? 'border-brand bg-brand-soft text-brand-dark'
-                      : 'border-line-strong bg-white text-ink-soft hover:border-ink',
+                      : 'border-line-strong bg-card text-ink-soft hover:border-ink dark:hover:border-sun/60',
               )}
               aria-current={i === currentIdx ? 'step' : undefined}
             >
@@ -510,7 +510,7 @@ function QuizEngine({
                       ? 'border-danger bg-danger-soft text-ink'
                       : isPicked
                         ? 'border-brand bg-brand-soft text-ink'
-                        : 'border-line bg-white text-ink-soft hover:border-brand hover:bg-paper/70',
+                        : 'border-line bg-card text-ink-soft hover:border-brand hover:bg-paper/70 dark:hover:border-sun/60',
                   hasInstantKey && isAnswered && !showRight && !showWrong && 'opacity-65',
                 )}
               >

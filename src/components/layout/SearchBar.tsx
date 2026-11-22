@@ -49,14 +49,14 @@ export function SearchBar({ id, className, size = 'md', autoFocus, onSubmitted, 
         enterKeyHint="search"
         autoComplete="off"
         className={cn(
-          'w-full rounded-xl border border-line-strong bg-white text-ink placeholder:text-muted/90 transition outline-none focus:border-brand focus:shadow-[0_0_0_4px_rgb(47_85_212/0.15)]',
+          'w-full rounded-xl border border-line-strong bg-card text-ink placeholder:text-muted/90 transition outline-none focus:border-brand focus:shadow-[0_0_0_4px_rgb(47_85_212/0.15)] dark:bg-[#0d1838] dark:focus:border-sun dark:focus:shadow-[0_0_0_4px_rgb(245_184_46/0.2)]',
           size === 'lg' ? 'h-14 pr-28 pl-11 text-base' : 'h-10 pr-3 pl-10 text-sm',
         )}
       />
       {size === 'lg' && (
         <button
           type="submit"
-          className="absolute top-1/2 right-2 h-10 -translate-y-1/2 rounded-lg bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+          className="absolute top-1/2 right-2 h-10 -translate-y-1/2 rounded-lg bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft dark:bg-sun dark:text-[#12204a] dark:hover:brightness-95"
         >
           Ara
         </button>

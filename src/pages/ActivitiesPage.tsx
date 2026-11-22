@@ -168,7 +168,7 @@ export function ActivitiesPage() {
                   Filtreleri Temizle
                 </Button>
               ) : (
-                <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-white/70 px-3 py-2.5 text-xs font-semibold text-muted">
+                <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-card/80 px-3 py-2.5 text-xs font-semibold text-muted">
                   <ShieldCheck className="size-4 text-success" aria-hidden />
                   <span>Güvenli Sandbox İframe</span>
                 </div>
@@ -221,7 +221,7 @@ export function ActivitiesPage() {
                         {item.kind === 'game' ? <Gamepad2 className="size-3.5" aria-hidden /> : <Puzzle className="size-3.5" aria-hidden />}
                         {KIND_LABELS[item.kind]}
                       </span>
-                      <span className="rounded-md bg-ink/80 px-2 py-0.5 text-[11px] font-extrabold tracking-wide uppercase">
+                      <span className="rounded-md bg-[#12204a]/80 px-2 py-0.5 text-[11px] font-extrabold tracking-wide text-[#f9f7f0] uppercase">
                         {PROVIDER_LABELS[item.provider]}
                       </span>
                     </div>
@@ -319,7 +319,7 @@ function ActivityEmbedModal({ activity, onClose }: { activity: InteractiveActivi
 
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center ${fullscreen ? 'p-0' : 'p-2 sm:p-5'}`}>
-      <div className="absolute inset-0 animate-fade-in bg-ink/60 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#091129]/60 backdrop-blur-[2px] dark:bg-[#050a1a]/80" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -329,7 +329,7 @@ function ActivityEmbedModal({ activity, onClose }: { activity: InteractiveActivi
         }`}
       >
         {/* Oynatıcı Üst Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-card px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="brand">{KIND_LABELS[activity.kind]}</Badge>
@@ -357,7 +357,7 @@ function ActivityEmbedModal({ activity, onClose }: { activity: InteractiveActivi
                 href={safeExternalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line-strong bg-white px-3 text-sm font-semibold text-ink transition hover:border-ink"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line-strong bg-card px-3 text-sm font-semibold text-ink transition hover:border-ink"
               >
                 <ExternalLink className="size-4" aria-hidden />
                 <span className="hidden sm:inline">Kaynak</span>
@@ -367,7 +367,7 @@ function ActivityEmbedModal({ activity, onClose }: { activity: InteractiveActivi
               type="button"
               onClick={() => setFullscreen((f) => !f)}
               aria-label={fullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
-              className="grid size-9 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink"
+              className="grid size-9 place-items-center rounded-xl border border-line-strong bg-card text-ink transition hover:border-ink dark:hover:border-sun/60"
             >
               {fullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
             </button>
@@ -375,7 +375,7 @@ function ActivityEmbedModal({ activity, onClose }: { activity: InteractiveActivi
               type="button"
               onClick={onClose}
               aria-label="Oynatıcıyı kapat"
-              className="grid size-9 place-items-center rounded-xl border border-line-strong bg-white text-ink transition hover:border-ink"
+              className="grid size-9 place-items-center rounded-xl border border-line-strong bg-card text-ink transition hover:border-ink dark:hover:border-sun/60"
             >
               <X className="size-5" />
             </button>
@@ -485,7 +485,7 @@ function AddEmbedModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 animate-fade-in bg-ink/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#091129]/50 backdrop-blur-[2px] dark:bg-[#050a1a]/75" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -496,7 +496,7 @@ function AddEmbedModal({
           type="button"
           onClick={onClose}
           aria-label="Kapat"
-          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted hover:bg-ink/5 hover:text-ink"
+          className="absolute top-4 right-4 grid size-9 place-items-center rounded-xl text-muted hover:bg-ink/5 hover:text-ink dark:hover:bg-white/10"
         >
           <X className="size-5" />
         </button>

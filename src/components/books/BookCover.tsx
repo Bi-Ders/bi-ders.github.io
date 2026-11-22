@@ -55,11 +55,11 @@ export function BookCover({ book, size = 'md', className }: BookCoverProps) {
         </>
       ) : (
         <div
-          className="relative flex size-full flex-col justify-between bg-paper p-3 text-ink"
+          className="relative flex size-full flex-col justify-between bg-[#faf7f0] p-3 text-[#12204a]"
           aria-hidden
         >
           {/* Sol lacivert + sarı kitap sırtı şeridi */}
-          <div className="absolute inset-y-0 left-0 w-[11%] bg-ink" />
+          <div className="absolute inset-y-0 left-0 w-[11%] bg-[#12204a]" />
           <div className="absolute inset-y-0 left-[11%] w-[2.5%] bg-sun" />
 
           {/* Arka plan geometrik süsleme */}
@@ -78,7 +78,7 @@ export function BookCover({ book, size = 'md', className }: BookCoverProps) {
             <span
               className={cn(
                 'inline-block truncate rounded font-bold tracking-wider uppercase',
-                compact ? 'max-w-full text-[8px] text-brand' : 'bg-ink px-2 py-0.5 text-[10px] text-paper',
+                compact ? 'max-w-full text-[8px] text-[#2f55d4]' : 'bg-[#12204a] px-2 py-0.5 text-[10px] text-[#faf7f0]',
               )}
             >
               {book.category?.name ?? 'Bi Ders!'}
