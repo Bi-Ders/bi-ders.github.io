@@ -145,10 +145,10 @@ export const siteConfig = {
       label: 'Sınavlar',
       shortLabel: 'Sınavlar',
       to: '/sinavlar',
-      description: 'LGS, TYT, AYT deneme kitapçıkları ve çözümler',
+      description: 'Ortaokul ve LGS deneme kitapçıkları ve çözümler',
       icon: 'award',
       gradient: 'from-slate-800 via-blue-900 to-indigo-800',
-      badge: 'LGS / YKS',
+      badge: 'LGS',
     },
     {
       key: 'evraklar',

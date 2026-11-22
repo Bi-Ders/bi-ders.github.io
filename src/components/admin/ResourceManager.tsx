@@ -49,18 +49,16 @@ const TARGET_OPTIONS: Array<{ value: TargetOption; label: string; route: string;
   { value: 'ders-notlari', label: 'Ders Notları', route: '/ders-notlari', hint: 'Özet föyler ve kavram haritaları' },
   { value: 'sunular', label: 'Sunular', route: '/sunular', hint: 'Akıllı tahta ve ders slaytları' },
   { value: 'yazililar', label: 'Yazılılar', route: '/yazililar', hint: 'Dönemlik yazılı ve cevap anahtarları' },
-  { value: 'sinavlar', label: 'Sınavlar', route: '/sinavlar', hint: 'LGS, TYT, AYT deneme kitapçıkları' },
+  { value: 'sinavlar', label: 'Sınavlar', route: '/sinavlar', hint: 'LGS ve ortaokul deneme kitapçıkları' },
   { value: 'evraklar', label: 'Evraklar', route: '/evraklar', hint: 'Yıllık plan, zümre ve BEP formları' },
   { value: 'lesson', label: 'Konu Anlatımı (/dersler)', route: '/dersler', hint: 'Makale ve konu anlatımı sayfası' },
 ]
 
 const GRADE_SUGGESTIONS = [
+  '5. Sınıf',
+  '6. Sınıf',
+  '7. Sınıf',
   '8. Sınıf / LGS',
-  '9. Sınıf',
-  '10. Sınıf',
-  '11. Sınıf',
-  '12. Sınıf / AYT',
-  'TYT',
   'Öğretmen / Genel',
 ]
 
@@ -80,7 +78,7 @@ export function ResourceManager({
   const [target, setTarget] = useState<TargetOption>('ders-notlari')
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
-  const [grade, setGrade] = useState('9. Sınıf')
+  const [grade, setGrade] = useState('8. Sınıf / LGS')
   const [unit, setUnit] = useState('')
   const [format, setFormat] = useState<DocumentFormat>('PDF')
   const [contentType, setContentType] = useState<ContentType>('lesson')
@@ -324,12 +322,12 @@ export function ResourceManager({
               onChange={(e) => setTitle(e.target.value)}
               placeholder={
                 target === 'sunular'
-                  ? 'Örn: Fonksiyonlar Akıllı Tahta Sunumu (24 Slayt)'
+                  ? 'Örn: Üslü İfadeler Akıllı Tahta Sunumu (24 Slayt)'
                   : target === 'yazililar'
-                    ? 'Örn: 10. Sınıf Matematik 1. Dönem 2. Yazılı (Açık Uçlu)'
+                    ? 'Örn: 8. Sınıf Matematik 1. Dönem 1. Yazılı (Açık Uçlu)'
                     : target === 'evraklar'
-                      ? 'Örn: 2026–2027 10. Sınıf Fizik Yıllık Planı'
-                      : 'Örn: İntegral Kuralları ve Alan Hesabı Özet Föyü'
+                      ? 'Örn: 2026–2027 8. Sınıf Fen Bilimleri Yıllık Planı'
+                      : 'Örn: Kareköklü İfadeler ve Veri Analizi Özet Föyü'
               }
             />
           </div>
@@ -365,7 +363,7 @@ export function ResourceManager({
               className="input"
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              placeholder="Örn: 10. Sınıf"
+              placeholder="Örn: 8. Sınıf"
             />
             <datalist id="admin-grade-list">
               {GRADE_SUGGESTIONS.map((g) => (
@@ -590,7 +588,7 @@ export function ResourceManager({
               className="input"
               value={tagsRaw}
               onChange={(e) => setTagsRaw(e.target.value)}
-              placeholder="Örn: tyt, matematik, özet föy"
+              placeholder="Örn: lgs, matematik, özet föy"
             />
           </div>
 

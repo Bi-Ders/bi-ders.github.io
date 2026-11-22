@@ -55,7 +55,7 @@ export function ActivityManager({
   const [kind, setKind] = useState<ActivityKind>('game')
   const [embedUrl, setEmbedUrl] = useState('')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
-  const [grade, setGrade] = useState('9. Sınıf')
+  const [grade, setGrade] = useState('8. Sınıf / LGS')
   const [unit, setUnit] = useState('')
   const [duration, setDuration] = useState('5')
   const [description, setDescription] = useState('')
@@ -374,7 +374,7 @@ export function ActivityManager({
               className="input"
               value={tagsRaw}
               onChange={(e) => setTagsRaw(e.target.value)}
-              placeholder="Örn: wordwall, eşleştirme, 9. sınıf"
+              placeholder="Örn: wordwall, eşleştirme, 8. sınıf"
             />
           </div>
         </div>

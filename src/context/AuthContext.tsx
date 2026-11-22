@@ -45,6 +45,12 @@ export function translateAuthError(message: string): string {
   if (m.includes('password should be at least')) return 'Şifre en az 6 karakter olmalıdır.'
   if (m.includes('rate limit') || m.includes('too many')) return 'Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.'
   if (m.includes('provider is not enabled')) return 'Google ile giriş bu proje için henüz etkinleştirilmemiş.'
+  if (m.includes('otp_expired') || m.includes('token has expired') || m.includes('invalid or has expired')) {
+    return 'Doğrulama bağlantısının süresi dolmuş veya daha önce kullanılmış. Hesabınız doğrulandıysa doğrudan e-posta ve şifrenizle giriş yapabilirsiniz.'
+  }
+  if (m.includes('code verifier') || m.includes('code_verifier') || m.includes('pkce')) {
+    return 'Hesabınız doğrulandıysa doğrudan e-posta ve şifrenizle giriş yapabilirsiniz.'
+  }
   if (m.includes('network') || m.includes('failed to fetch')) return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.'
   return message
 }

@@ -432,7 +432,7 @@ function AddEmbedModal({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [kind, setKind] = useState<ActivityKind>('game')
-  const [grade, setGrade] = useState('9. Sınıf')
+  const [grade, setGrade] = useState('8. Sınıf / LGS')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
   const [unit, setUnit] = useState('')
   const [embedUrl, setEmbedUrl] = useState('')

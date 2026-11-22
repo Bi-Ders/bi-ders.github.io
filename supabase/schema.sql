@@ -86,7 +86,7 @@ create table if not exists public.profiles (
 );
 comment on table public.profiles is 'Kullanıcı profilleri. role: student (varsayılan), teacher, admin.';
 
--- 3.2 CATEGORIES — dersler / konular (Matematik, Fizik, ...)
+-- 3.2 CATEGORIES — dersler / konular (Ortaokul müfredatı: Türkçe, Matematik, Fen Bilimleri, ...)
 create table if not exists public.categories (
   id          uuid primary key default gen_random_uuid(),
   slug        text not null unique check (slug ~ '^[a-z0-9-]{2,60}$'),
@@ -109,7 +109,7 @@ create table if not exists public.contents (
   body          text,
   type          public.content_type   not null default 'lesson',
   status        public.content_status not null default 'draft',
-  grade         text,                     -- örn: '9. Sınıf', 'TYT', 'AYT'
+  grade         text,                     -- örn: '5. Sınıf', '6. Sınıf', '7. Sınıf', '8. Sınıf / LGS'
   cover_url     text,
   file_url      text,
   video_url     text,
@@ -1165,19 +1165,93 @@ end $$;
 
 
 -- ---------------------------------------------------------------------
--- 10. BAŞLANGIÇ VERİLERİ
+-- 10. BAŞLANGIÇ VERİLERİ (Ortaokul Müfredatı — 6 Temel Ders)
 -- ---------------------------------------------------------------------
-insert into public.categories (slug, name, description, icon, color, sort_order) values
-  ('matematik',  'Matematik',   'Sayılar, cebir, geometri ve analiz',            'sigma',       '#2F55D4', 1),
-  ('fizik',      'Fizik',       'Hareket, kuvvet, enerji, elektrik ve dalgalar', 'atom',        '#0E7C66', 2),
-  ('kimya',      'Kimya',       'Madde, tepkimeler ve periyodik sistem',         'flask-conical','#B4441C', 3),
-  ('biyoloji',   'Biyoloji',    'Hücre, kalıtım, ekoloji ve insan fizyolojisi',  'leaf',        '#3F7D20', 4),
-  ('turkce',     'Türkçe',      'Dil bilgisi, paragraf ve anlam bilgisi',        'languages',   '#9A3B8C', 5),
-  ('edebiyat',   'Edebiyat',    'Türk ve dünya edebiyatı, şiir ve nesir',        'feather',     '#7A4E12', 6),
-  ('tarih',      'Tarih',       'Türk ve dünya tarihi',                          'landmark',    '#8B2E2E', 7),
-  ('cografya',   'Coğrafya',    'Fiziki ve beşeri coğrafya',                     'globe',       '#1F6E8C', 8),
-  ('ingilizce',  'İngilizce',   'Kelime, dil bilgisi ve okuma becerileri',       'book-a',      '#38464F', 9)
-on conflict (slug) do nothing;
+do $$
+declare
+  v_turkce uuid;
+  v_fen uuid;
+  v_sosyal uuid;
+  v_legacy_slugs text[] := array['fizik', 'kimya', 'biyoloji', 'edebiyat', 'tarih', 'cografya'];
+begin
+  insert into public.categories (slug, name, description, icon, color, sort_order) values
+    ('turkce',          'Türkçe',          'Okuma anlama, dil bilgisi, paragraf ve yazma becerileri',    'languages',     '#9A3B8C', 1),
+    ('matematik',       'Matematik',       'Sayılar, işlemler, cebir, geometri ve veri analizi',         'sigma',         '#2F55D4', 2),
+    ('fen-bilimleri',   'Fen Bilimleri',   'Canlılar, madde, kuvvet, enerji ve Dünya ile evren',         'flask-conical', '#0E7C66', 3),
+    ('sosyal-bilgiler', 'Sosyal Bilgiler', 'Tarih, coğrafya, kültür, vatandaşlık ve inkılap tarihi',     'globe',         '#B4441C', 4),
+    ('ingilizce',       'İngilizce',       'Kelime bilgisi, dil bilgisi, diyalog ve okuma becerileri',   'book-a',        '#1F6E8C', 5),
+    ('din-kulturu',     'Din Kültürü',     'İnanç, ibadet, ahlak ve değerler eğitimi',                   'moon-star',     '#7A4E12', 6)
+  on conflict (slug) do update set
+    name        = excluded.name,
+    description = excluded.description,
+    icon        = excluded.icon,
+    color       = excluded.color,
+    sort_order  = excluded.sort_order;
+
+  select id into v_turkce from public.categories where slug = 'turkce';
+  select id into v_fen    from public.categories where slug = 'fen-bilimleri';
+  select id into v_sosyal from public.categories where slug = 'sosyal-bilgiler';
+
+  -- Eski lise kategorilerine bağlı kayıt varsa yeni ortaokul derslerine güvenli eşle
+  update public.contents c
+     set category_id = case old_cat.slug
+                         when 'fizik'    then v_fen
+                         when 'kimya'    then v_fen
+                         when 'biyoloji' then v_fen
+                         when 'tarih'    then v_sosyal
+                         when 'cografya' then v_sosyal
+                         when 'edebiyat' then v_turkce
+                         else null
+                       end
+    from public.categories old_cat
+   where c.category_id = old_cat.id
+     and old_cat.slug = any(v_legacy_slugs);
+
+  update public.forum_topics ft
+     set category_id = case old_cat.slug
+                         when 'fizik'    then v_fen
+                         when 'kimya'    then v_fen
+                         when 'biyoloji' then v_fen
+                         when 'tarih'    then v_sosyal
+                         when 'cografya' then v_sosyal
+                         when 'edebiyat' then v_turkce
+                         else null
+                       end
+    from public.categories old_cat
+   where ft.category_id = old_cat.id
+     and old_cat.slug = any(v_legacy_slugs);
+
+  update public.quizzes q
+     set category_id = case old_cat.slug
+                         when 'fizik'    then v_fen
+                         when 'kimya'    then v_fen
+                         when 'biyoloji' then v_fen
+                         when 'tarih'    then v_sosyal
+                         when 'cografya' then v_sosyal
+                         when 'edebiyat' then v_turkce
+                         else null
+                       end
+    from public.categories old_cat
+   where q.category_id = old_cat.id
+     and old_cat.slug = any(v_legacy_slugs);
+
+  update public.books b
+     set category_id = case old_cat.slug
+                         when 'fizik'    then v_fen
+                         when 'kimya'    then v_fen
+                         when 'biyoloji' then v_fen
+                         when 'tarih'    then v_sosyal
+                         when 'cografya' then v_sosyal
+                         when 'edebiyat' then v_turkce
+                         else null
+                       end
+    from public.categories old_cat
+   where b.category_id = old_cat.id
+     and old_cat.slug = any(v_legacy_slugs);
+
+  delete from public.categories
+   where slug = any(v_legacy_slugs);
+end $$;
 
 -- =====================================================================
 --  Şema sonu

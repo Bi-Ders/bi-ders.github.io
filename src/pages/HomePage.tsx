@@ -40,7 +40,7 @@ export function HomePage() {
               id="hero-search"
               size="lg"
               className="mt-7 max-w-xl"
-              placeholder="Türev, Newton yasaları, paragraf, kitap ara…"
+              placeholder="Paragraf, üslü ifadeler, fen bilimleri, LGS ara…"
             />
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -141,7 +141,7 @@ export function HomePage() {
 
         {categories.loading ? (
           <div className="mt-6 flex flex-wrap gap-2.5" aria-hidden>
-            {Array.from({ length: 8 }, (_, i) => (
+            {Array.from({ length: 6 }, (_, i) => (
               <Skeleton key={i} className="h-11 w-32 rounded-xl" />
             ))}
           </div>
@@ -150,7 +150,7 @@ export function HomePage() {
             <ErrorState message={categories.error} onRetry={categories.reload} />
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {(categories.data ?? []).map((c) => (
               <Link
                 key={c.id}

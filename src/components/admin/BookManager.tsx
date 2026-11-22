@@ -34,9 +34,9 @@ import type { Book, Category } from '../../types'
 
 const PRESET_COVERS = [
   { label: 'Matematik', path: '/books/temel-matematik.webp' },
-  { label: 'Edebiyat', path: '/books/calikusu.webp' },
-  { label: 'Fizik', path: '/books/fizik-formul-defteri.webp' },
-  { label: 'Kimya', path: '/books/kimya-soru-bankasi.webp' },
+  { label: 'Türkçe', path: '/books/calikusu.webp' },
+  { label: 'Fen Bilimleri (Formül)', path: '/books/fizik-formul-defteri.webp' },
+  { label: 'Fen Bilimleri (Soru)', path: '/books/kimya-soru-bankasi.webp' },
   { label: 'İngilizce', path: '/books/ydt-kelime-kartlari.webp' },
 ]
 
@@ -58,7 +58,7 @@ export function BookManager({
   const [authorTitle, setAuthorTitle] = useState('')
   const [authorBio, setAuthorBio] = useState('')
   const [publisher, setPublisher] = useState('Bi Ders! Yayınları')
-  const [grade, setGrade] = useState('TYT')
+  const [grade, setGrade] = useState('8. Sınıf / LGS')
   const [price, setPrice] = useState('199')
   const [externalUrl, setExternalUrl] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
@@ -90,7 +90,7 @@ export function BookManager({
     setAuthorTitle('')
     setAuthorBio('')
     setPublisher('Bi Ders! Yayınları')
-    setGrade('TYT')
+    setGrade('8. Sınıf / LGS')
     setPrice('199')
     setExternalUrl('')
     setCoverUrl('')
@@ -318,7 +318,7 @@ export function BookManager({
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Örn: AYT Geometri Konu Anlatımı ve Soru Bankası"
+                  placeholder="Örn: 8. Sınıf LGS Matematik Konu Anlatımı ve Soru Bankası"
                 />
               </div>
 
@@ -350,7 +350,7 @@ export function BookManager({
                   className="input"
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
-                  placeholder="Örn: TYT, AYT, 10–11. Sınıf"
+                  placeholder="Örn: 5. Sınıf, 7. Sınıf, 8. Sınıf / LGS"
                 />
               </div>
             </div>
@@ -651,7 +651,7 @@ export function BookManager({
                   book={{
                     title: title || 'Yeni Kitap Başlığı',
                     author: author || 'Bi Ders! Eğitim Ekibi',
-                    grade: grade || 'TYT',
+                    grade: grade || '8. Sınıf / LGS',
                     cover_url: coverUrl || null,
                     category: previewCategory,
                   }}

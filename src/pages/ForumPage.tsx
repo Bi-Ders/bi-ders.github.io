@@ -302,7 +302,7 @@ function NewTopicModal({
               maxLength={200}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Örn: İntegralde değişken değiştirme kuralında takıldım"
+              placeholder="Örn: Kareköklü sayılarda toplama işleminde takıldım"
             />
           </div>
 
@@ -334,7 +334,7 @@ function NewTopicModal({
                 className="input"
                 value={tagsRaw}
                 onChange={(e) => setTagsRaw(e.target.value)}
-                placeholder="ayt, integral, soru"
+                placeholder="lgs, matematik, soru"
               />
             </div>
           </div>

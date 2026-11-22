@@ -54,10 +54,10 @@ const MODULE_META: Record<ResourceModuleKey, ModuleMeta> = {
   },
   sinavlar: {
     eyebrow: 'Deneme ve Sınav Kitapçıkları',
-    title: 'LGS, TYT ve AYT deneme sınavları',
+    title: 'Ortaokul ve LGS deneme sınavları',
     description: 'Güncel müfredata uygun tam deneme kitapçıkları, branş denemeleri ve ayrıntılı çözüm kılavuzları.',
     unitMetric: 'sayfa',
-    searchPlaceholder: 'TYT, AYT, LGS veya branş denemesi ara…',
+    searchPlaceholder: 'LGS, 5–8. sınıf veya branş denemesi ara…',
   },
   evraklar: {
     eyebrow: 'Öğretmen Evrak ve Şablonları',

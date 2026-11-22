@@ -49,7 +49,7 @@ export function QuizManager({
 }) {
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
-  const [grade, setGrade] = useState('9. Sınıf')
+  const [grade, setGrade] = useState('8. Sınıf / LGS')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [timeLimit, setTimeLimit] = useState('12')
   const [description, setDescription] = useState('')
@@ -237,7 +237,7 @@ export function QuizManager({
               className="input"
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              placeholder="Örn: 9. Sınıf, TYT, LGS"
+              placeholder="Örn: 5. Sınıf, 7. Sınıf, 8. Sınıf / LGS"
             />
           </div>
 

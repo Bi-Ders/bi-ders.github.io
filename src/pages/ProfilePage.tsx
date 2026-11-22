@@ -133,7 +133,7 @@ export function ProfilePage() {
                 <label htmlFor="p-grade" className="label">
                   Sınıf / Hedef
                 </label>
-                <input id="p-grade" className="input" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="Örn. 12. Sınıf / TYT-AYT" />
+                <input id="p-grade" className="input" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="Örn. 8. Sınıf / LGS" />
               </div>
             </div>
             <div>

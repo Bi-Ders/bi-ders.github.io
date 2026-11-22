@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, KeyRound } from 'lucide-react'
+import type { EmailOtpType } from '@supabase/supabase-js'
+import { CheckCircle2, KeyRound, LogIn } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { translateAuthError, useAuth, type AuthMode } from '../context/AuthContext'
 import { usePageMeta } from '../hooks'
@@ -8,13 +9,69 @@ import { AuthForm } from '../components/auth/AuthForm'
 import { Alert, PageSpinner } from '../components/ui/Feedback'
 import { Button, ButtonLink } from '../components/ui/Button'
 
-/** Güvenli iç yönlendirme: yalnızca "/" ile başlayan yerel yollara izin verir */
-function safeNext(raw: string | null, fallback = '/profil') {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return fallback
-  return raw
+const EMAIL_OTP_TYPES: ReadonlySet<EmailOtpType> = new Set<EmailOtpType>([
+  'signup',
+  'invite',
+  'magiclink',
+  'recovery',
+  'email_change',
+  'email',
+])
+
+const CROSS_BROWSER_PKCE_MESSAGE =
+  'Hesabınız doğrulandıysa doğrudan e-posta ve şifrenizle giriş yapabilirsiniz.'
+
+type VerifyOtpResult = Awaited<ReturnType<NonNullable<typeof supabase>['auth']['verifyOtp']>>
+const inflightVerifyOtp = new Map<string, Promise<VerifyOtpResult>>()
+
+function isEmailOtpType(value: string | null): value is EmailOtpType {
+  return value !== null && EMAIL_OTP_TYPES.has(value as EmailOtpType)
 }
 
-/** OAuth dönüşünde güvenli yönlendirme hedefi; geçersiz veya auth yollarında ana sayfaya döner */
+function isPkceCrossBrowserError(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    m.includes('code verifier') ||
+    m.includes('code_verifier') ||
+    m.includes('pkce') ||
+    m.includes('flow state') ||
+    m.includes('bad_code_verifier') ||
+    m.includes('both auth code and code verifier')
+  )
+}
+
+/** React StrictMode çift çalışmasında tek kullanımlık token_hash'in iki kez tüketilmesini önler */
+function verifyOtpOnce(
+  client: NonNullable<typeof supabase>,
+  tokenHash: string,
+  type: EmailOtpType,
+): Promise<VerifyOtpResult> {
+  const key = `${type}:${tokenHash}`
+  const existing = inflightVerifyOtp.get(key)
+  if (existing) return existing
+  const promise = client.auth.verifyOtp({ token_hash: tokenHash, type })
+  inflightVerifyOtp.set(key, promise)
+  return promise
+}
+
+/** Güvenli iç yönlendirme: yalnızca aynı kaynaklı veya "/" ile başlayan yerel yollara izin verir */
+function safeNext(raw: string | null, fallback = '/profil') {
+  if (!raw) return fallback
+  let path = raw.trim()
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const parsed = new URL(path)
+      if (parsed.origin !== window.location.origin) return fallback
+      path = `${parsed.pathname}${parsed.search}${parsed.hash}`
+    } catch {
+      return fallback
+    }
+  }
+  if (!path.startsWith('/') || path.startsWith('//')) return fallback
+  return path
+}
+
+/** OAuth ve e-posta dönüşünde güvenli yönlendirme hedefi; geçersiz veya auth yollarında ana sayfaya döner */
 function safeCallbackTarget(raw: string | null) {
   const target = safeNext(raw, '/')
   if (target.startsWith('/auth/callback') || target.startsWith('/giris') || target.startsWith('/kayit')) {
@@ -22,6 +79,10 @@ function safeCallbackTarget(raw: string | null) {
   }
   return target
 }
+
+type CallbackOutcome =
+  | { kind: 'error'; message: string }
+  | { kind: 'info'; message: string; detail?: string }
 
 export function AuthPage({ mode }: { mode: AuthMode }) {
   usePageMeta(mode === 'register' ? 'Kayıt Ol' : 'Giriş Yap')
@@ -54,7 +115,7 @@ export function AuthCallbackPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const [asyncError, setAsyncError] = useState<string | null>(null)
+  const [outcome, setOutcome] = useState<CallbackOutcome | null>(null)
 
   const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''))
   const urlError =
@@ -62,8 +123,24 @@ export function AuthCallbackPage() {
     params.get('error') ??
     hashParams.get('error_description') ??
     hashParams.get('error')
-  const error = urlError ?? asyncError
+  const tokenHash = params.get('token_hash') ?? hashParams.get('token_hash')
+  const rawType = params.get('type') ?? (tokenHash ? hashParams.get('type') : null)
+  const pkceCode = params.get('code')
+  const hasImplicitToken = hashParams.has('access_token')
+  const isRecoveryHash = !tokenHash && hashParams.get('type') === 'recovery'
   const target = safeCallbackTarget(params.get('next'))
+
+  const derivedUrlOutcome: CallbackOutcome | null = urlError
+    ? isPkceCrossBrowserError(urlError)
+      ? {
+          kind: 'info',
+          message: CROSS_BROWSER_PKCE_MESSAGE,
+          detail: 'Doğrulama bağlantısı farklı bir tarayıcıda açıldığı için oturum otomatik başlatılamadı.',
+        }
+      : { kind: 'error', message: translateAuthError(urlError) }
+    : null
+
+  const activeOutcome = derivedUrlOutcome ?? outcome
 
   useEffect(() => {
     if (urlError) return
@@ -75,12 +152,104 @@ export function AuthCallbackPage() {
     }
 
     let settled = false
+    let timeoutId: number | undefined
+    let pkceFallbackTimerId: number | undefined
+
+    const clearTimers = () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      if (pkceFallbackTimerId !== undefined) window.clearTimeout(pkceFallbackTimerId)
+    }
+
     const finish = (destination: string) => {
       if (settled) return
       settled = true
+      clearTimers()
       navigate(destination, { replace: true })
     }
 
+    const showPkceFallback = () => {
+      if (settled) return
+      settled = true
+      clearTimers()
+      setOutcome({
+        kind: 'info',
+        message: CROSS_BROWSER_PKCE_MESSAGE,
+        detail:
+          'Doğrulama bağlantısı farklı bir tarayıcıda (ör. uygulama içi tarayıcıda) açıldığı için oturum otomatik başlatılamadı.',
+      })
+    }
+
+    // 1) Tarayıcıdan bağımsız e-posta doğrulama: ?token_hash=...&type=...
+    if (tokenHash) {
+      const otpType: EmailOtpType | null =
+        rawType === null ? 'email' : isEmailOtpType(rawType) ? rawType : null
+
+      if (!otpType) {
+        setOutcome({
+          kind: 'error',
+          message: 'Geçersiz doğrulama bağlantısı. Lütfen e-postanızdaki bağlantıyı kontrol edin.',
+        })
+        return
+      }
+
+      const otpTarget = otpType === 'recovery' && target === '/' ? '/sifre-yenile' : target
+
+      timeoutId = window.setTimeout(() => {
+        if (!settled) {
+          settled = true
+          setOutcome({
+            kind: 'error',
+            message: 'Oturum doğrulaması zaman aşımına uğradı. Lütfen tekrar giriş yapmayı deneyin.',
+          })
+        }
+      }, 12000)
+
+      void verifyOtpOnce(client, tokenHash, otpType)
+        .then(async ({ data, error: verifyErr }) => {
+          if (settled) return
+          clearTimers()
+          if (verifyErr) {
+            settled = true
+            setOutcome({
+              kind: 'error',
+              message: translateAuthError(verifyErr.message),
+            })
+            return
+          }
+          if (data.session) {
+            finish(otpTarget)
+            return
+          }
+          const { data: sessionData } = await client.auth.getSession()
+          if (settled) return
+          if (sessionData.session) {
+            finish(otpTarget)
+            return
+          }
+          settled = true
+          setOutcome({
+            kind: 'info',
+            message: CROSS_BROWSER_PKCE_MESSAGE,
+            detail: 'E-posta doğrulamanız tamamlandı.',
+          })
+        })
+        .catch((err: unknown) => {
+          if (settled) return
+          clearTimers()
+          settled = true
+          setOutcome({
+            kind: 'error',
+            message: err instanceof Error ? translateAuthError(err.message) : 'Doğrulama tamamlanamadı.',
+          })
+        })
+
+      return () => {
+        settled = true
+        clearTimers()
+      }
+    }
+
+    // 2) PKCE (?code=...) veya implicit (#access_token=...) akışı
     // Supabase istemcisi detectSessionInUrl: true ile PKCE kodunu otomatik doğrular;
     // burada ikinci kez exchangeCodeForSession çağırmadan mevcut oturumu bekliyoruz.
     const {
@@ -91,59 +260,101 @@ export function AuthCallbackPage() {
         return
       }
       if (session) {
-        finish(target)
+        finish(isRecoveryHash ? '/sifre-yenile' : target)
       }
     })
 
-    const timeoutId = window.setTimeout(() => {
-      if (!settled) {
+    timeoutId = window.setTimeout(() => {
+      if (settled) return
+      if (pkceCode) {
+        showPkceFallback()
+      } else {
         settled = true
-        setAsyncError('Oturum doğrulaması zaman aşımına uğradı. Lütfen tekrar giriş yapmayı deneyin.')
+        setOutcome({
+          kind: 'error',
+          message: 'Oturum doğrulaması zaman aşımına uğradı. Lütfen tekrar giriş yapmayı deneyin.',
+        })
       }
-    }, 8000)
+    }, 10000)
 
     void client.auth
       .getSession()
       .then(({ data, error: sessionErr }) => {
         if (settled) return
         if (sessionErr) {
-          settled = true
-          setAsyncError(sessionErr.message)
+          if (pkceCode || isPkceCrossBrowserError(sessionErr.message)) {
+            showPkceFallback()
+          } else {
+            settled = true
+            clearTimers()
+            setOutcome({ kind: 'error', message: translateAuthError(sessionErr.message) })
+          }
           return
         }
         if (data.session) {
-          finish(target)
+          finish(isRecoveryHash ? '/sifre-yenile' : target)
           return
         }
-        const hasAuthParams =
-          params.has('code') ||
-          params.has('token_hash') ||
-          location.hash.includes('access_token=')
-        if (!hasAuthParams) {
+        // getSession() istemcinin URL algılama sürecini bekler. PKCE ?code=... gelmesine
+        // rağmen oturum oluşmadıysa (ör. mobil Gmail içi tarayıcıda code_verifier yoksa)
+        // zaman aşımına düşmeden doğrudan giriş mesajını gösteriyoruz.
+        if (pkceCode) {
+          pkceFallbackTimerId = window.setTimeout(() => {
+            showPkceFallback()
+          }, 150)
+          return
+        }
+        if (!hasImplicitToken) {
           finish('/')
         }
       })
       .catch((err: unknown) => {
         if (settled) return
-        settled = true
-        setAsyncError(err instanceof Error ? err.message : 'Oturum doğrulanamadı.')
+        if (pkceCode || (err instanceof Error && isPkceCrossBrowserError(err.message))) {
+          showPkceFallback()
+        } else {
+          settled = true
+          clearTimers()
+          setOutcome({
+            kind: 'error',
+            message: err instanceof Error ? translateAuthError(err.message) : 'Oturum doğrulanamadı.',
+          })
+        }
       })
 
     return () => {
       settled = true
-      window.clearTimeout(timeoutId)
+      clearTimers()
       subscription.unsubscribe()
     }
-  }, [location.hash, navigate, params, target, urlError])
+  }, [hasImplicitToken, isRecoveryHash, navigate, pkceCode, rawType, target, tokenHash, urlError])
 
-  if (error) {
+  if (activeOutcome) {
+    if (activeOutcome.kind === 'info') {
+      return (
+        <div className="container-page flex max-w-md flex-col items-center py-20 text-center">
+          <div className="card w-full p-6 sm:p-8">
+            <Alert tone="info" className="w-full text-left">
+              {activeOutcome.detail && (
+                <p className="mb-1.5 text-xs font-normal text-muted">{activeOutcome.detail}</p>
+              )}
+              <p className="font-semibold text-ink">{activeOutcome.message}</p>
+            </Alert>
+            <ButtonLink to="/giris" size="lg" className="mt-6 w-full" icon={<LogIn className="size-4" aria-hidden />}>
+              Giriş Yap
+            </ButtonLink>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="container-page flex max-w-md flex-col items-center py-20 text-center">
         <Alert tone="error" className="w-full">
-          Giriş tamamlanamadı: {translateAuthError(error)}
+          Giriş tamamlanamadı: {activeOutcome.message}
         </Alert>
-        <ButtonLink to="/giris" className="mt-6">
-          Giriş sayfasına dön
+        <ButtonLink to="/giris" className="mt-6" icon={<LogIn className="size-4" aria-hidden />}>
+          Giriş Yap
         </ButtonLink>
       </div>
     )

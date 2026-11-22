@@ -33,7 +33,7 @@ export function SearchPage() {
           <EmptyState
             icon={<Search className="size-6" />}
             title="Ne aramak istersin?"
-            description='Örneğin "türev", "Newton", "paragraf" veya "Çalıkuşu" yazarak arayabilirsin.'
+            description='Örneğin "paragraf", "üslü ifadeler", "basınç" veya "Çalıkuşu" yazarak arayabilirsin.'
           />
         ) : res.loading ? (
           <GridSkeleton count={6} />
