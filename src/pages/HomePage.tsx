@@ -27,7 +27,7 @@ export function HomePage() {
     <div>
       {/* Hero */}
       <section className="border-b border-line bg-paper-deep/50">
-        <div className="container-page grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-12 lg:py-20">
+        <div className="container-page grid items-center gap-10 py-10 sm:py-14 lg:grid-cols-12 lg:py-16">
           <div className="animate-fade-up lg:col-span-7">
             <h1 className="text-4xl leading-[1.08] font-extrabold sm:text-5xl lg:text-[54px]">
               Öğrenmenin en kısa yolu: <span className="marker">Bi Ders!</span>
@@ -63,15 +63,6 @@ export function HomePage() {
                 </Button>
               )}
             </div>
-
-            <dl className="mt-10 grid grid-cols-2 gap-4 border-t border-line pt-6 sm:grid-cols-4">
-              {siteConfig.stats.map((s) => (
-                <div key={s.label}>
-                  <dt className="text-xs font-semibold text-muted">{s.label}</dt>
-                  <dd className="font-display text-2xl font-extrabold text-ink">{s.value}</dd>
-                </div>
-              ))}
-            </dl>
           </div>
 
           <div className="lg:col-span-5">

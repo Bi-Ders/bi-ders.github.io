@@ -177,14 +177,6 @@ export const siteConfig = {
     { label: 'KVKK Aydınlatma Metni', to: '/kvkk' },
     { label: 'Çerez Politikası', to: '/cerez-politikasi' },
   ] satisfies NavItem[],
-
-  /** Ana sayfadaki kısa istatistikler */
-  stats: [
-    { value: '1.200+', label: 'Ders notu ve sunu' },
-    { value: '350+', label: 'Online test' },
-    { value: '8.000+', label: 'Forum cevabı' },
-    { value: '%100', label: 'Ücretsiz & Açık Kaynak' },
-  ],
 } as const
 
 export type SiteConfig = typeof siteConfig
