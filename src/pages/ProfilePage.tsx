@@ -11,6 +11,8 @@ import { Alert, EmptyState, ErrorState, RowSkeleton } from '../components/ui/Fee
 
 type Tab = 'info' | 'favorites' | 'quizzes'
 
+const USERNAME_RE = /^[a-z0-9_.]{3,30}$/
+
 export function ProfilePage() {
   usePageMeta('Profilim')
   const { user, profile, isStaff, updateProfile, signOut } = useAuth()
@@ -21,9 +23,13 @@ export function ProfilePage() {
   const [school, setSchool] = useState(profile?.school ?? '')
   const [grade, setGrade] = useState(profile?.grade ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
+  const [touched, setTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [errMsg, setErrMsg] = useState<string | null>(null)
+
+  const isTeacher = profile?.role === 'teacher'
+  const gradeLabel = isTeacher ? 'Branş' : 'Sınıf / Hedef'
 
   useEffect(() => {
     if (!profile) return
@@ -37,21 +43,69 @@ export function ProfilePage() {
   const favorites = useAsync(() => (user ? getFavorites(user.id) : Promise.resolve([])), [user?.id])
   const results = useAsync(() => (user ? getQuizResults(user.id) : Promise.resolve([])), [user?.id])
 
+  const cleanName = fullName.trim()
+  const cleanUser = username.trim().toLowerCase()
+  const cleanSchool = school.trim()
+  const cleanGrade = grade.trim()
+
+  const nameError = touched
+    ? cleanName.length < 2
+      ? 'Ad Soyad alanı zorunludur (en az 2 karakter).'
+      : cleanName.length > 120
+        ? 'Ad Soyad en fazla 120 karakter olabilir.'
+        : undefined
+    : undefined
+  const usernameError = touched
+    ? !cleanUser
+      ? 'Kullanıcı adı alanı zorunludur.'
+      : !USERNAME_RE.test(cleanUser)
+        ? '3–30 karakter; yalnızca küçük harf, rakam, "_" ve "." içerebilir.'
+        : undefined
+    : undefined
+  const schoolError = touched
+    ? cleanSchool.length < 2
+      ? 'Okul alanı zorunludur.'
+      : cleanSchool.length > 160
+        ? 'Okul adı en fazla 160 karakter olabilir.'
+        : undefined
+    : undefined
+  const gradeError = touched
+    ? !cleanGrade
+      ? isTeacher
+        ? 'Branş alanı zorunludur.'
+        : 'Sınıf / Hedef alanı zorunludur.'
+      : cleanGrade.length > 40
+        ? `${gradeLabel} en fazla 40 karakter olabilir.`
+        : undefined
+    : undefined
+
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
-    setSaving(true)
+    setTouched(true)
     setSavedMsg(null)
     setErrMsg(null)
+
+    if (
+      cleanName.length < 2 ||
+      cleanName.length > 120 ||
+      !cleanUser ||
+      !USERNAME_RE.test(cleanUser) ||
+      cleanSchool.length < 2 ||
+      cleanSchool.length > 160 ||
+      !cleanGrade ||
+      cleanGrade.length > 40
+    ) {
+      setErrMsg('Lütfen "Hakkında" dışındaki tüm zorunlu alanları eksiksiz ve geçerli şekilde doldur.')
+      return
+    }
+
+    setSaving(true)
     try {
-      const cleanUser = username.trim().toLowerCase()
-      if (cleanUser && !/^[a-z0-9_.]{3,30}$/.test(cleanUser)) {
-        throw new Error('Kullanıcı adı 3–30 karakter olmalı; yalnızca küçük harf, rakam, "_" ve "." içerebilir.')
-      }
       await updateProfile({
-        full_name: fullName.trim() || null,
-        username: cleanUser || null,
-        school: school.trim() || null,
-        grade: grade.trim() || null,
+        full_name: cleanName,
+        username: cleanUser,
+        school: cleanSchool,
+        grade: cleanGrade,
         bio: bio.trim() || null,
       })
       setSavedMsg('Profil bilgilerin güncellendi.')
@@ -107,40 +161,100 @@ export function ProfilePage() {
 
       <section className="container-page max-w-3xl py-10">
         {tab === 'info' && (
-          <form onSubmit={handleSave} className="card space-y-5 p-6 sm:p-8">
+          <form onSubmit={handleSave} noValidate className="card space-y-5 p-6 sm:p-8">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="p-name" className="label">
-                  Ad Soyad
+                  Ad Soyad <span className="text-danger" aria-hidden>*</span>
                 </label>
-                <input id="p-name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <input
+                  id="p-name"
+                  className="input"
+                  required
+                  maxLength={120}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  aria-invalid={Boolean(nameError)}
+                  aria-describedby={nameError ? 'p-name-error' : undefined}
+                  placeholder="Örn. Elif Yılmaz"
+                />
+                {nameError && (
+                  <p id="p-name-error" className="mt-1.5 text-sm font-medium text-danger">
+                    {nameError}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="p-username" className="label">
-                  Kullanıcı Adı
+                  Kullanıcı Adı <span className="text-danger" aria-hidden>*</span>
                 </label>
-                <input id="p-username" className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ornek.kullanici" />
+                <input
+                  id="p-username"
+                  className="input"
+                  required
+                  maxLength={30}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  aria-invalid={Boolean(usernameError)}
+                  aria-describedby={usernameError ? 'p-username-error' : undefined}
+                  placeholder="ornek.kullanici"
+                />
+                {usernameError && (
+                  <p id="p-username-error" className="mt-1.5 text-sm font-medium text-danger">
+                    {usernameError}
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="p-school" className="label">
-                  Okul
+                  Okul <span className="text-danger" aria-hidden>*</span>
                 </label>
-                <input id="p-school" className="input" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Okul adı" />
+                <input
+                  id="p-school"
+                  className="input"
+                  required
+                  maxLength={160}
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  aria-invalid={Boolean(schoolError)}
+                  aria-describedby={schoolError ? 'p-school-error' : undefined}
+                  placeholder="Okul adı"
+                />
+                {schoolError && (
+                  <p id="p-school-error" className="mt-1.5 text-sm font-medium text-danger">
+                    {schoolError}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="p-grade" className="label">
-                  Sınıf / Hedef
+                  {gradeLabel} <span className="text-danger" aria-hidden>*</span>
                 </label>
-                <input id="p-grade" className="input" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="Örn. 8. Sınıf / LGS" />
+                <input
+                  id="p-grade"
+                  className="input"
+                  required
+                  maxLength={40}
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  aria-invalid={Boolean(gradeError)}
+                  aria-describedby={gradeError ? 'p-grade-error' : undefined}
+                  placeholder={isTeacher ? 'Örn. Türkçe, Matematik, Fen Bilimleri' : 'Örn. 8. Sınıf / LGS'}
+                />
+                {gradeError && (
+                  <p id="p-grade-error" className="mt-1.5 text-sm font-medium text-danger">
+                    {gradeError}
+                  </p>
+                )}
               </div>
             </div>
             <div>
               <label htmlFor="p-bio" className="label">
-                Hakkında
+                Hakkında <span className="font-normal text-muted">(İsteğe bağlı)</span>
               </label>
-              <textarea id="p-bio" rows={3} className="input resize-y" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Kısaca kendinden bahset…" />
+              <textarea id="p-bio" rows={3} maxLength={500} className="input resize-y" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Kısaca kendinden bahset…" />
             </div>
 
             {errMsg && <Alert tone="error">{errMsg}</Alert>}

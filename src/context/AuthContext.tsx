@@ -7,6 +7,16 @@ import type { Profile, Role } from '../types'
 
 export type AuthMode = 'login' | 'register' | 'forgot'
 
+export type SignUpPayload = {
+  fullName: string
+  username: string
+  school: string
+  grade: string
+  email: string
+  password: string
+  requestedTeacher?: boolean
+}
+
 type AuthUser = { id: string; email: string | null }
 
 type AuthContextValue = {
@@ -20,7 +30,7 @@ type AuthContextValue = {
   isAdmin: boolean
   signInWithGoogle: (next?: string) => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (fullName: string, email: string, password: string) => Promise<{ needsConfirmation: boolean }>
+  signUpWithEmail: (payload: SignUpPayload) => Promise<{ needsConfirmation: boolean }>
   sendPasswordReset: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
   signInAsDemo: (role: 'student' | 'admin') => void
@@ -105,19 +115,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     let active = true
     const meta = session.user.user_metadata ?? {}
+    const metaUsername = typeof meta.username === 'string' && meta.username.trim() ? meta.username.trim().toLowerCase() : null
+    const metaSchool = typeof meta.school === 'string' && meta.school.trim() ? meta.school.trim() : null
+    const metaGrade = typeof meta.grade === 'string' && meta.grade.trim() ? meta.grade.trim() : null
     const fallback: Profile = {
       id: userId,
       full_name: meta.full_name ?? meta.name ?? session.user.email?.split('@')[0] ?? null,
-      username: null,
+      username: metaUsername,
       avatar_url: meta.avatar_url ?? null,
       bio: null,
-      school: null,
-      grade: null,
+      school: metaSchool,
+      grade: metaGrade,
       role: 'student',
       created_at: session.user.created_at,
     }
     fetchProfile(userId)
-      .then((p) => active && setProfile({ ...(p ?? fallback), email: session.user.email ?? null }))
+      .then(async (p) => {
+        if (!active) return
+        if (p) {
+          const syncPatch: ProfilePatch = {}
+          if (!p.username && metaUsername) syncPatch.username = metaUsername
+          if (!p.school && metaSchool) syncPatch.school = metaSchool
+          if (!p.grade && metaGrade) syncPatch.grade = metaGrade
+          if (Object.keys(syncPatch).length > 0) {
+            try {
+              const synced = await apiUpdateProfile(userId, syncPatch)
+              if (active) setProfile({ ...(synced ?? { ...p, ...syncPatch }), email: session.user.email ?? null })
+              return
+            } catch {
+              // Kullanıcı adı çakışması gibi durumlarda kalan alanları yine de senkronize et
+              const { username: _omit, ...restPatch } = syncPatch
+              if (Object.keys(restPatch).length > 0) {
+                try {
+                  const syncedRest = await apiUpdateProfile(userId, restPatch)
+                  if (active) setProfile({ ...(syncedRest ?? { ...p, ...restPatch }), email: session.user.email ?? null })
+                  return
+                } catch {
+                  // Sessizce mevcut profili kullan
+                }
+              }
+            }
+          }
+          if (active) setProfile({ ...p, email: session.user.email ?? null })
+          return
+        }
+        setProfile({ ...fallback, email: session.user.email ?? null })
+      })
       .catch((err) => {
         console.warn('[Bi Ders!] Profil okunamadı (schema.sql çalıştırıldı mı?):', err)
         if (active) setProfile({ ...fallback, email: session.user.email ?? null })
@@ -150,17 +193,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(translateAuthError(error.message))
   }, [])
 
-  const signUpWithEmail = useCallback(async (fullName: string, email: string, password: string) => {
+  const signUpWithEmail = useCallback(async (payload: SignUpPayload) => {
     const client = requireClient()
+    const cleanFullName = payload.fullName.trim()
+    const cleanUsername = payload.username.trim().toLowerCase()
+    const cleanSchool = payload.school.trim()
+    const cleanGrade = payload.grade.trim()
+
+    const metadata: Record<string, unknown> = {
+      full_name: cleanFullName,
+      username: cleanUsername,
+      school: cleanSchool,
+      grade: cleanGrade,
+      ...(payload.requestedTeacher ? { requested_teacher: true } : {}),
+    }
+
     const { data, error } = await client.auth.signUp({
-      email: email.trim(),
-      password,
+      email: payload.email.trim(),
+      password: payload.password,
       options: {
-        data: { full_name: fullName.trim() },
+        data: metadata,
         emailRedirectTo: `${getSiteUrl()}/auth/callback`,
       },
     })
     if (error) throw new Error(translateAuthError(error.message))
+
+    if (data.session && data.user) {
+      try {
+        await apiUpdateProfile(data.user.id, {
+          full_name: cleanFullName,
+          username: cleanUsername,
+          school: cleanSchool,
+          grade: cleanGrade,
+        })
+      } catch {
+        // Profil tetikleyicisi henüz tamamlanmadıysa oturum açılışında senkronize edilir
+      }
+    }
+
     return { needsConfirmation: !data.session }
   }, [])
 

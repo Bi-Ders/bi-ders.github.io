@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, Eye, EyeOff, GraduationCap, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, BookOpen, Eye, EyeOff, GraduationCap, Info, Mail, ShieldCheck } from 'lucide-react'
 import { useAuth, type AuthMode } from '../../context/AuthContext'
 import { cn, isEmail } from '../../lib/utils'
 import { Button } from '../ui/Button'
@@ -16,6 +16,10 @@ type AuthFormProps = {
   onModeChange?: (mode: AuthMode) => void
 }
 
+type AccountType = 'student' | 'teacher'
+
+const USERNAME_RE = /^[a-z0-9_.]{3,30}$/
+
 const titles: Record<AuthMode, { title: string; subtitle: string }> = {
   login: { title: 'Tekrar hoş geldin!', subtitle: 'Kaldığın yerden devam etmek için giriş yap.' },
   register: { title: 'Ücretsiz hesap oluştur', subtitle: 'Favorilerini kaydet, test sonuçlarını takip et, forumda soru sor.' },
@@ -25,7 +29,11 @@ const titles: Record<AuthMode, { title: string; subtitle: string }> = {
 export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onModeChange }: AuthFormProps) {
   const { isDemo, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, signInAsDemo } = useAuth()
   const [mode, setModeState] = useState<AuthMode>(initialMode)
+  const [accountType, setAccountType] = useState<AccountType>('student')
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
+  const [school, setSchool] = useState('')
+  const [grade, setGrade] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -45,9 +53,36 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
     onModeChange?.(m)
   }
 
+  const isTeacher = accountType === 'teacher'
+  const cleanName = fullName.trim()
+  const cleanUsername = username.trim().toLowerCase()
+  const cleanSchool = school.trim()
+  const cleanGrade = grade.trim()
+
   const emailInvalid = touched && !isEmail(email)
   const passwordInvalid = touched && mode !== 'forgot' && password.length < 6
-  const nameInvalid = touched && mode === 'register' && fullName.trim().length < 2
+  const nameInvalid = touched && mode === 'register' && (cleanName.length < 2 || cleanName.length > 120)
+  const usernameError =
+    touched && mode === 'register'
+      ? !cleanUsername
+        ? 'Lütfen bir kullanıcı adı belirle.'
+        : !USERNAME_RE.test(cleanUsername)
+          ? '3–30 karakter; yalnızca küçük harf, rakam, "_" ve "." kullanabilirsin.'
+          : undefined
+      : undefined
+  const schoolInvalid = touched && mode === 'register' && (cleanSchool.length < 2 || cleanSchool.length > 160)
+  const gradeError =
+    touched && mode === 'register'
+      ? !cleanGrade
+        ? isTeacher
+          ? 'Lütfen branş bilgisini yaz.'
+          : 'Lütfen sınıf veya hedef bilgisini yaz.'
+        : cleanGrade.length > 40
+          ? isTeacher
+            ? 'Branş bilgisi en fazla 40 karakter olabilir.'
+            : 'Sınıf / Hedef bilgisi en fazla 40 karakter olabilir.'
+          : undefined
+      : undefined
 
   const handleGoogle = async () => {
     setError(null)
@@ -66,11 +101,37 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
     setTouched(true)
     setError(null)
     setInfo(null)
-    if (!isEmail(email)) return
-    if (mode !== 'forgot' && password.length < 6) return
-    if (mode === 'register' && (fullName.trim().length < 2 || !acceptTerms)) {
-      if (!acceptTerms) setError('Devam etmek için Kullanım Koşulları ve KVKK metnini onaylamalısın.')
-      return
+
+    if (mode === 'register') {
+      const hasInvalidField =
+        cleanName.length < 2 ||
+        cleanName.length > 120 ||
+        !cleanUsername ||
+        !USERNAME_RE.test(cleanUsername) ||
+        cleanSchool.length < 2 ||
+        cleanSchool.length > 160 ||
+        !cleanGrade ||
+        cleanGrade.length > 40 ||
+        !isEmail(email) ||
+        password.length < 6
+
+      if (hasInvalidField) {
+        setError('Lütfen tüm zorunlu alanları eksiksiz ve geçerli şekilde doldur.')
+        return
+      }
+      if (!acceptTerms) {
+        setError('Devam etmek için Kullanım Koşulları ve KVKK metnini onaylamalısın.')
+        return
+      }
+    } else {
+      if (!isEmail(email)) {
+        setError('Lütfen geçerli bir e-posta adresi gir.')
+        return
+      }
+      if (mode !== 'forgot' && password.length < 6) {
+        setError('Şifre en az 6 karakter olmalıdır.')
+        return
+      }
     }
 
     setBusy('email')
@@ -79,7 +140,15 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
         await signInWithEmail(email, password)
         onSuccess?.()
       } else if (mode === 'register') {
-        const { needsConfirmation } = await signUpWithEmail(fullName, email, password)
+        const { needsConfirmation } = await signUpWithEmail({
+          fullName: cleanName,
+          username: cleanUsername,
+          school: cleanSchool,
+          grade: cleanGrade,
+          email,
+          password,
+          requestedTeacher: isTeacher,
+        })
         if (needsConfirmation) {
           setInfo(`${email} adresine bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsin.`)
         } else {
@@ -152,27 +221,151 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
 
       <form onSubmit={handleSubmit} noValidate className={cn('space-y-4', mode === 'forgot' && 'mt-6')}>
         {mode === 'register' && (
-          <Field id={`${idPrefix}-name`} label="Ad Soyad" error={nameInvalid ? 'Lütfen adını ve soyadını yaz.' : undefined}>
-            <input
-              id={`${idPrefix}-name`}
-              className="input"
-              autoComplete="name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              aria-invalid={nameInvalid}
-              aria-describedby={nameInvalid ? `${idPrefix}-name-error` : undefined}
-              placeholder="Örn. Elif Yılmaz"
-            />
-          </Field>
+          <>
+            <div>
+              <span className="label">Hesap Türü</span>
+              <div
+                role="radiogroup"
+                aria-label="Hesap türü seçimi"
+                className="grid grid-cols-2 gap-2.5"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={accountType === 'student'}
+                  onClick={() => setAccountType('student')}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition',
+                    accountType === 'student'
+                      ? 'border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun dark:bg-[#1e3168] dark:shadow-none'
+                      : 'border-line-strong bg-card text-ink-soft hover:border-ink/50 hover:text-ink dark:hover:border-sun/50',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'grid size-8 shrink-0 place-items-center rounded-lg transition',
+                      accountType === 'student'
+                        ? 'bg-ink text-sun dark:bg-sun dark:text-[#12204a]'
+                        : 'bg-paper-deep text-muted',
+                    )}
+                    aria-hidden
+                  >
+                    <GraduationCap className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold leading-tight">Öğrenciyim</span>
+                    <span className="block truncate text-[11px] text-muted">Ders, test, forum</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={accountType === 'teacher'}
+                  onClick={() => setAccountType('teacher')}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition',
+                    accountType === 'teacher'
+                      ? 'border-ink bg-sun-soft text-ink shadow-[0_2px_0_0_var(--color-ink)] dark:border-sun dark:bg-[#1e3168] dark:shadow-none'
+                      : 'border-line-strong bg-card text-ink-soft hover:border-ink/50 hover:text-ink dark:hover:border-sun/50',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'grid size-8 shrink-0 place-items-center rounded-lg transition',
+                      accountType === 'teacher'
+                        ? 'bg-ink text-sun dark:bg-sun dark:text-[#12204a]'
+                        : 'bg-paper-deep text-muted',
+                    )}
+                    aria-hidden
+                  >
+                    <BookOpen className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold leading-tight">Öğretmenim</span>
+                    <span className="block truncate text-[11px] text-muted">İçerik &amp; kaynak</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id={`${idPrefix}-name`} label="Ad Soyad" required error={nameInvalid ? 'Lütfen adını ve soyadını yaz.' : undefined}>
+                <input
+                  id={`${idPrefix}-name`}
+                  className="input"
+                  autoComplete="name"
+                  required
+                  maxLength={120}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  aria-invalid={nameInvalid}
+                  aria-describedby={nameInvalid ? `${idPrefix}-name-error` : undefined}
+                  placeholder="Örn. Elif Yılmaz"
+                />
+              </Field>
+
+              <Field id={`${idPrefix}-username`} label="Kullanıcı Adı" required error={usernameError}>
+                <input
+                  id={`${idPrefix}-username`}
+                  className="input"
+                  autoComplete="username"
+                  required
+                  maxLength={30}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  aria-invalid={Boolean(usernameError)}
+                  aria-describedby={usernameError ? `${idPrefix}-username-error` : undefined}
+                  placeholder="ornek.kullanici"
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id={`${idPrefix}-school`} label="Okul" required error={schoolInvalid ? 'Lütfen okul adını yaz.' : undefined}>
+                <input
+                  id={`${idPrefix}-school`}
+                  className="input"
+                  required
+                  maxLength={160}
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  aria-invalid={schoolInvalid}
+                  aria-describedby={schoolInvalid ? `${idPrefix}-school-error` : undefined}
+                  placeholder="Okul adı"
+                />
+              </Field>
+
+              <Field
+                id={`${idPrefix}-grade`}
+                label={isTeacher ? 'Branş' : 'Sınıf / Hedef'}
+                required
+                error={gradeError}
+              >
+                <input
+                  id={`${idPrefix}-grade`}
+                  className="input"
+                  required
+                  maxLength={40}
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  aria-invalid={Boolean(gradeError)}
+                  aria-describedby={gradeError ? `${idPrefix}-grade-error` : undefined}
+                  placeholder={isTeacher ? 'Örn. Türkçe, Matematik, Fen Bilimleri' : 'Örn. 8. Sınıf / LGS'}
+                />
+              </Field>
+            </div>
+          </>
         )}
 
-        <Field id={`${idPrefix}-email`} label="E-posta" error={emailInvalid ? 'Geçerli bir e-posta adresi gir.' : undefined}>
+        <Field id={`${idPrefix}-email`} label="E-posta" required={mode === 'register'} error={emailInvalid ? 'Geçerli bir e-posta adresi gir.' : undefined}>
           <input
             id={`${idPrefix}-email`}
             type="email"
             inputMode="email"
             className="input"
             autoComplete="email"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={emailInvalid}
@@ -185,6 +378,7 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
           <Field
             id={`${idPrefix}-password`}
             label="Şifre"
+            required={mode === 'register'}
             error={passwordInvalid ? 'Şifre en az 6 karakter olmalı.' : undefined}
             aside={
               mode === 'login' ? (
@@ -200,6 +394,7 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
                 type={showPassword ? 'text' : 'password'}
                 className="input pr-11"
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={passwordInvalid}
@@ -245,6 +440,13 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
         <Button id={`${idPrefix}-submit`} type="submit" size="lg" className="w-full" loading={busy === 'email'} disabled={busy !== null} icon={mode === 'forgot' ? <Mail className="size-4" /> : undefined}>
           {mode === 'login' ? 'Giriş Yap' : mode === 'register' ? 'Hesap Oluştur' : 'Bağlantı Gönder'}
         </Button>
+
+        {mode === 'register' && isTeacher && (
+          <p className="flex items-start gap-2 rounded-xl border border-brand/25 bg-brand-soft/60 px-3.5 py-2.5 text-xs leading-relaxed text-ink-soft dark:border-sun/35 dark:bg-[#182a5d]">
+            <Info className="mt-0.5 size-4 shrink-0 text-brand dark:text-sun" aria-hidden />
+            <span>Öğretmen yetkiniz yönetici doğrulamasından sonra aktifleşecektir.</span>
+          </p>
+        )}
       </form>
 
       {mode !== 'forgot' && (
@@ -259,12 +461,31 @@ export function AuthForm({ initialMode = 'login', onSuccess, next, idPrefix, onM
   )
 }
 
-function Field({ id, label, error, aside, children }: { id: string; label: string; error?: string; aside?: React.ReactNode; children: React.ReactNode }) {
+function Field({
+  id,
+  label,
+  required,
+  error,
+  aside,
+  children,
+}: {
+  id: string
+  label: string
+  required?: boolean
+  error?: string
+  aside?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <div>
       <div className="flex items-center justify-between">
         <label htmlFor={id} className="label">
           {label}
+          {required && (
+            <span className="ml-0.5 text-danger" aria-hidden>
+              *
+            </span>
+          )}
         </label>
         {aside}
       </div>

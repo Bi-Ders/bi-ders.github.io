@@ -4,6 +4,7 @@ import {
   BookMarked,
   BookOpen,
   ClipboardCheck,
+  Compass,
   Gamepad2,
   Mail,
   Users,
@@ -23,12 +24,14 @@ import { ResourceManager } from '../components/admin/ResourceManager'
 import { ActivityManager } from '../components/admin/ActivityManager'
 import { QuizManager } from '../components/admin/QuizManager'
 import { BookManager } from '../components/admin/BookManager'
+import { ContentGuide } from '../components/admin/ContentGuide'
 import { Avatar, Badge, Chip, PageHeader, RoleBadge } from '../components/ui/Display'
+import { Button } from '../components/ui/Button'
 import { Alert, EmptyState, ErrorState, RowSkeleton, Skeleton } from '../components/ui/Feedback'
 
-type AdminTab = 'resources' | 'activities' | 'quizzes' | 'books' | 'messages' | 'users'
+type AdminTab = 'resources' | 'activities' | 'quizzes' | 'books' | 'guide' | 'messages' | 'users'
 
-const VALID_TABS: AdminTab[] = ['resources', 'activities', 'quizzes', 'books', 'messages', 'users']
+const VALID_TABS: AdminTab[] = ['resources', 'activities', 'quizzes', 'books', 'guide', 'messages', 'users']
 
 export function AdminPage() {
   usePageMeta('Yönetim Paneli', 'Bi Ders! içerik ekleme, test oluşturma, oyun-etkinlik ve kitap mağazası yönetimi.')
@@ -86,6 +89,19 @@ export function AdminPage() {
             ? 'Ders notları, sunular, yazılılar, evraklar, iframe oyun/etkinlikler, online testler ve kitap mağazasını tek yerden yönet. Eklediğin her içerik ilgili modül sayfasında anında yayınlanır.'
             : 'Öğretmen hesabınla ders notları, sunular, etkinlikler, online testler ve kitap kayıtları oluşturabilirsin.'
         }
+        actions={
+          tab !== 'guide' ? (
+            <Button
+              type="button"
+              variant="sun"
+              size="sm"
+              onClick={() => setTab('guide')}
+              icon={<Compass className="size-4" aria-hidden />}
+            >
+              İçerik Ekleme Rehberi
+            </Button>
+          ) : undefined
+        }
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {stats.loading ? (
@@ -119,6 +135,9 @@ export function AdminPage() {
           </Chip>
           <Chip active={tab === 'books'} onClick={() => setTab('books')}>
             <BookMarked className="size-3.5" aria-hidden /> Kitap Mağazası
+          </Chip>
+          <Chip active={tab === 'guide'} onClick={() => setTab('guide')}>
+            <Compass className="size-3.5" aria-hidden /> İçerik Ekleme Rehberi
           </Chip>
           {isAdmin && (
             <>
@@ -173,6 +192,8 @@ export function AdminPage() {
             onChanged={stats.reload}
           />
         )}
+
+        {tab === 'guide' && <ContentGuide onNavigateTab={(targetTab) => setTab(targetTab)} />}
 
         {tab === 'messages' && isAdmin && (
           <div className="card divide-y divide-line overflow-hidden">
